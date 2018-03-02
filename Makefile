@@ -1,14 +1,16 @@
 .PHONY: clean init build run
 
+build:
+	pulp build
+
 clean:
 	rm -fr aws-sdk-js aws-sdk-purs bower_components output
 
-init:
+init: update-dependencies
 	git clone https://github.com/aws/aws-sdk-js.git
 
-build:
+update-dependencies:
 	bower update
-	pulp build
 
 run:
 	pulp run
