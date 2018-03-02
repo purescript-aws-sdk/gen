@@ -8,5 +8,4 @@
 /.purs*
 /.psa*
 
-/aws-sdk-js/
 /aws-sdk-purs/
