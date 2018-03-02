@@ -145,7 +145,7 @@ recordRecord (MetadataElement { name: serviceName }) newTypeName keyValue requir
                     (AttributeName attributeName)
 
                 property key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
-                    # replace (Pattern "{{name}}") (Replacement $ compatibleType key)
+                    # replace (Pattern "{{name}}") (Replacement $ key)
                     # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
                     # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "NullOrUndefined.NullOrUndefined")
                     # replace (Pattern "  ") (Replacement " ")
