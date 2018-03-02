@@ -1,6 +1,6 @@
 module Main where
 
-import Prelude
+import Prelude (Unit, bind, map, pure, (#), ($), (>>>))
 import Control.Monad.Aff (Aff, Fiber, apathize, launchAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -15,12 +15,14 @@ import Data.String.Regex (Regex, test)
 import Data.StrMap (values)
 import Data.Tuple (Tuple(..))
 import Node.Encoding (Encoding(..))
-import Node.FS.Aff (FS, mkdir, readdir, readTextFile, writeTextFile)
-import Node.Path (FilePath, concat)
+import Node.FS.Aff (FS, readTextFile, readdir, writeTextFile)
+import Node.Path (FilePath, concat, dirname)
 
-import Aws (Metadata(Metadata), MetadataElement(MetadataElement), Service, metadataFileRegex)
+import Aws (Metadata(Metadata), MetadataElement, Service, metadataFileRegex)
 import Eff (liftEither, liftExcept, liftMaybe)
-import Printer.PureScript (client, clientFilePath)
+import Printer.PureScript (client, clientFilePath, project)
+import FS (mkdirRecursive)
+
 
 apisMetadataFilePath = "./aws-sdk-js/apis/metadata.json" :: FilePath
 apisPath = "./aws-sdk-js/apis/" :: FilePath
@@ -44,14 +46,16 @@ metadataWithService (Tuple metadata filePath) = do
   service <- decodeJSON jsonString # liftExcept # liftEff
   pure $ Tuple metadata service
 
-metadataWithClientFile :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (fs :: FS | eff) (Tuple MetadataElement FilePath)
-metadataWithClientFile path (Tuple metadata@(MetadataElement { name }) service) = do
-  let filePath = clientFilePath path metadata service
-  let file = client metadata service
+createClientProject :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (fs :: FS | eff) Unit
+createClientProject path (Tuple metadata service) = project path metadata service
 
-  _ <- apathize $ mkdir clientsPath
-  _ <- writeTextFile UTF8 filePath file
-  pure $ Tuple metadata filePath
+createClientFile :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (fs :: FS | eff) Unit
+createClientFile path (Tuple metadata service) = do
+  let filePath = clientFilePath path metadata service
+  let fileContent = client metadata service
+
+  _ <- apathize $ mkdirRecursive $ dirname filePath
+  writeTextFile UTF8 filePath fileContent
 
 main :: forall eff. Eff (fs :: FS, exception :: EXCEPTION, console :: CONSOLE | eff) (Fiber (fs :: FS, exception :: EXCEPTION , console :: CONSOLE | eff) Unit)
 main = launchAff do
@@ -68,6 +72,7 @@ main = launchAff do
 
   let metadataElementsWithApiFilePaths = map (metadataWithApiFilePath apisPath) metadataElementsWithApiFileName
   metadataElementsWithServices <- parTraverse metadataWithService metadataElementsWithApiFilePaths
-  metadataElementsWithClientFiles <- parTraverse (metadataWithClientFile clientsPath) metadataElementsWithServices
+  _ <- parTraverse (createClientProject clientsPath) metadataElementsWithServices
+  _ <- parTraverse (createClientFile clientsPath) metadataElementsWithServices
 
   liftEff $ log "Hello sailor!"
