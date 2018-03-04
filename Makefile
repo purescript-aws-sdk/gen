@@ -39,7 +39,7 @@ create-git-%:
 		-H 'Authorization: token ${GITHUB_TOKEN}'
 
 git-rebase-%:
-	mkdir -p ${DIR_TMP} || true
+	rm -fr ${DIR_TMP} && mkdir -p ${DIR_TMP} || true
 	git clone git@github.com:purescript-aws-sdk/$*.git ${DIR_TMP}/$*
 	mv ${DIR_TMP}/$*/.git ${DIR_PS_PROJECTS}/$*
 	rm -fr ${DIR_TMP}/$*
