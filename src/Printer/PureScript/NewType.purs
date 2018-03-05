@@ -11,7 +11,14 @@ import Aws (MetadataElement(MetadataElement), ServiceShape(ServiceShape), Servic
 import Printer.CycledInDeclaration (ServiceName(..), NewTypeName(..), AttributeName(..), notElem)
 import Printer.PureScript.Comment (comment)
 
-purescriptTypes = ["String", "Int", "Number", "Boolean"] :: Array String
+purescriptTypes :: Array String
+purescriptTypes =
+  [ "Boolean"
+  , "Int"
+  , "Number"
+  , "String"
+  , "Types.Timestamp"
+  ]
 
 compatibleType :: String -> String
 compatibleType type' = safeType
@@ -24,7 +31,7 @@ compatibleType type' = safeType
             "Long" -> "Number"
             "Float" -> "Number"
             "Double" -> "Number"
-            "Timestamp" -> "Number"
+            "Timestamp" -> "Types.Timestamp"
 
             "Function" -> "Function'"
             "Map" -> "Map'"
