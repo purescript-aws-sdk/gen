@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := build
+
 VERSION_AWS := $(shell cat aws-sdk-js/package.json | jq -r .version)
 VERSION := 0.0.$(shell git log --oneline | wc -l | tr -d '[:space:]')
 
