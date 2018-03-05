@@ -5,7 +5,7 @@ import Data.Array (elem)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..), unNullOrUndefined)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, dropWhile, joinWith, replace, take, toUpper)
-import Data.StrMap (StrMap, isEmpty, filterKeys, toArrayWithKey)
+import Data.StrMap (StrMap, filterKeys, toArrayWithKey)
 
 import Aws (MetadataElement(MetadataElement), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
 import Printer.CycledInDeclaration (ServiceName(..), NewTypeName(..), AttributeName(..), notElem)
@@ -70,22 +70,20 @@ recordMap (ServiceShapeName value) = "(StrMap.StrMap {{value}})"
     # replace (Pattern "{{value}}") (Replacement $ compatibleType value.shape)
 
 recordRecord :: MetadataElement -> String -> StrMap ServiceShapeName -> Array String -> String
-recordRecord (MetadataElement { name: serviceName }) newTypeName keyValue required = if isEmpty keyValue
-    then "Types.NoArguments"
-    else "\n  { {{properties}}\n  }"
-        # replace (Pattern "{{properties}}") (Replacement properties)
-            where
-                notCycledInDeclaration attributeName = notElem
-                    (ServiceName serviceName)
-                    (NewTypeName newTypeName)
-                    (AttributeName attributeName)
+recordRecord (MetadataElement { name: serviceName }) newTypeName keyValue required = "\n  { {{properties}}\n  }"
+    # replace (Pattern "{{properties}}") (Replacement properties)
+        where
+            notCycledInDeclaration attributeName = notElem
+                (ServiceName serviceName)
+                (NewTypeName newTypeName)
+                (AttributeName attributeName)
 
-                property key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
-                    # replace (Pattern "{{name}}") (Replacement key)
-                    # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
-                    # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "NullOrUndefined.NullOrUndefined")
-                    # replace (Pattern "  ") (Replacement " ")
+            property key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
+                # replace (Pattern "{{name}}") (Replacement key)
+                # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
+                # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "Maybe.Maybe")
+                # replace (Pattern "  ") (Replacement " ")
 
-                properties = filterKeys notCycledInDeclaration keyValue
-                    # toArrayWithKey property
-                    # joinWith "\n  , "
+            properties = filterKeys notCycledInDeclaration keyValue
+                # toArrayWithKey property
+                # joinWith "\n  , "

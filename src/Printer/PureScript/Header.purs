@@ -17,6 +17,7 @@ import Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Data.StrMap as StrMap
+import Data.Maybe as Maybe
 
 import AWS.Request as Request
 import AWS.Request.Types as Types
