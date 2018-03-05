@@ -4,7 +4,7 @@ import Prelude
 import Data.Array (elem)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..), unNullOrUndefined)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.String (Pattern(Pattern), Replacement(Replacement), drop, dropWhile, joinWith, replace, replaceAll, take, toUpper)
+import Data.String (Pattern(Pattern), Replacement(Replacement), drop, dropWhile, joinWith, replace, take, toUpper)
 import Data.StrMap (StrMap, isEmpty, filterKeys, toArrayWithKey)
 
 import Aws (MetadataElement(MetadataElement), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
@@ -49,16 +49,8 @@ newType metadata name serviceShape = output
 newType' :: MetadataElement -> String -> ServiceShape -> String
 newType' metadata name serviceShape@(ServiceShape { documentation }) = """
 {{documentation}}
-newtype {{name}} = {{name}} {{type}}
-derive instance newtype{{name}} :: Newtype {{name}} _
-derive instance repGeneric{{name}} :: Generic {{name}} _
-instance show{{name}} :: Show {{name}} where
-  show = genericShow
-instance decode{{name}} :: Decode {{name}} where
-  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
-instance encode{{name}} :: Encode {{name}} where
-  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
-""" # replaceAll (Pattern "{{name}}") (Replacement $ name)
+type {{name}} = {{type}}
+""" # replace (Pattern "{{name}}") (Replacement $ name)
     # replace (Pattern "{{type}}") (Replacement $ recordType metadata name serviceShape)
     # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment $ unNullOrUndefined documentation)
 
