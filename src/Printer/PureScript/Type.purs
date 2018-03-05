@@ -1,4 +1,4 @@
-module Printer.PureScript.NewType where
+module Printer.PureScript.Type where
 
 import Prelude
 import Data.Array (elem)
