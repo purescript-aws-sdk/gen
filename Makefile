@@ -12,8 +12,10 @@ DIR_TMP := /tmp/aws-sdk-purs
 clean:
 	rm -fr aws-sdk-purs bower_components output
 
-build:
+init:
 	bower update
+
+build:
 	pulp build
 
 run:
