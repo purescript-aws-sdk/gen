@@ -23,19 +23,13 @@ run:
 
 init-all:
 	cd ${DIR_PS_PROJECT} && bower update
-	for project in ${DIR_PS_PROJECTS}/*; do \
-		cp -R ${DIR_PS_PROJECT}/bower_components $${project}; \
-	done
+	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'cp -R ${DIR_PS_PROJECT}/bower_components ${DIR_PS_PROJECTS}/$$0 || true'
 
 test-all: init-all
-	for project in ${DIR_PS_PROJECTS}/*; do \
-		make test-$$(basename $${project}) || break; \
-	done
+	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'make test-$$0 || exit 255'
 
 release-all: init-all
-	for project in ${DIR_PS_PROJECTS}/*; do \
-		make release-$$(basename $${project}) || break; \
-	done
+	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'make release-$$0 || exit 255'
 
 create-git-%:
 	curl 'https://api.github.com/orgs/purescript-aws-sdk/repos' \
