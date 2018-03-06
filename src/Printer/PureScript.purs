@@ -2,9 +2,9 @@ module Printer.PureScript where
 
 import Prelude (Unit, bind, map, pure, unit, (#), ($), (<>))
 import Control.Monad.Aff (Aff, apathize)
-import Control.Parallel (parTraverse)
 import Data.String (Pattern(Pattern), Replacement(Replacement), joinWith, replace, replaceAll, toLower)
 import Data.StrMap (toArrayWithKey)
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (FS, readTextFile, writeTextFile)
@@ -36,13 +36,13 @@ project path metadata service  = do
 
     paths <- readdirRecursive projectTemplatePath
     PartitionPaths { directoryPaths, filePaths } <- partitionPaths paths
-    filePathsAndContent <- parTraverse (\f -> readTextFile UTF8 f # map (\c -> Tuple f c)) filePaths
+    filePathsAndContent <- traverse (\f -> readTextFile UTF8 f # map (\c -> Tuple f c)) filePaths
     let filePathsAndNewContent = map (\(Tuple f c) -> Tuple f $ updateFileContent metadata c) filePathsAndContent
     let newFilePathsAndNewContent = map (\(Tuple f c) -> Tuple (updateFilePath projectPath f) c) filePathsAndNewContent
     let newDirectoryPaths = map (updateFilePath projectPath) directoryPaths
 
-    _ <- apathize $ parTraverse (mkdirRecursive) newDirectoryPaths
-    _ <- parTraverse (\(Tuple f c) -> writeTextFile UTF8 f c) newFilePathsAndNewContent
+    _ <- apathize $ traverse (mkdirRecursive) newDirectoryPaths
+    _ <- traverse (\(Tuple f c) -> writeTextFile UTF8 f c) newFilePathsAndNewContent
     pure unit
 
 updateFileContent :: MetadataElement -> String -> String
