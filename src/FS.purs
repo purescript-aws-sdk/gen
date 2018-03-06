@@ -2,8 +2,8 @@ module FS where
 
 import Prelude
 import Control.Monad.Aff (Aff)
-import Control.Parallel (parTraverse)
 import Data.Array (concat, cons, partition)
+import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
 import Node.FS.Aff (FS, exists, mkdir, readdir, stat)
 import Node.FS.Stats (isDirectory)
@@ -17,7 +17,7 @@ newtype PartitionPaths = PartitionPaths
 
 partitionPaths :: forall eff. Array FilePath -> Aff (fs :: FS | eff) PartitionPaths
 partitionPaths paths = do
-    pathStats <- parTraverse (\p -> stat p # map (\s -> Tuple p s)) paths
+    pathStats <- traverse (\p -> stat p # map (\s -> Tuple p s)) paths
     let { yes: directoryStats, no: fileStats } = partition (\(Tuple p s) -> isDirectory s) pathStats
     let directoryPaths = map (\(Tuple p s) -> p) directoryStats
     let filePaths = map (\(Tuple p s) -> p) fileStats
@@ -39,7 +39,7 @@ readdirRecursive :: forall eff. FilePath -> Aff (fs :: FS | eff) (Array FilePath
 readdirRecursive path = do
     paths <- readdirFullPath path
     PartitionPaths { directoryPaths, filePaths } <- partitionPaths paths
-    otherPaths <- parTraverse readdirRecursive directoryPaths
+    otherPaths <- traverse readdirRecursive directoryPaths
     let all = cons filePaths otherPaths # cons directoryPaths # concat
     pure all
 

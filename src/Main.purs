@@ -6,13 +6,12 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Parallel (parTraverse)
-import Data.Array (find)
 import Data.Either (Either)
 import Data.Foreign.Generic (decodeJSON)
 import Data.Maybe (Maybe)
 import Data.String.Regex (Regex, test)
 import Data.StrMap (values)
+import Data.Traversable (find, traverse)
 import Data.Tuple (Tuple(..))
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (FS, readTextFile, readdir, writeTextFile)
@@ -64,15 +63,15 @@ main = launchAff do
   let metadataElements = values metadata
 
   metadataElementsWithApiFileRegex <- map metadataWithApiFileRegex metadataElements
-    # parTraverse (liftEither >>> liftEff)
+    # traverse (liftEither >>> liftEff)
 
   apiFileNames <- readdir apisPath
   metadataElementsWithApiFileName <- map (metadataWithApiFileName apiFileNames) metadataElementsWithApiFileRegex
-    # parTraverse (liftMaybe >>> liftEff)
+    # traverse (liftMaybe >>> liftEff)
 
   let metadataElementsWithApiFilePaths = map (metadataWithApiFilePath apisPath) metadataElementsWithApiFileName
-  metadataElementsWithServices <- parTraverse metadataWithService metadataElementsWithApiFilePaths
-  _ <- parTraverse (createClientProject clientsPath) metadataElementsWithServices
-  _ <- parTraverse (createClientFile clientsPath) metadataElementsWithServices
+  metadataElementsWithServices <- traverse metadataWithService metadataElementsWithApiFilePaths
+  _ <- traverse (createClientProject clientsPath) metadataElementsWithServices
+  _ <- traverse (createClientFile clientsPath) metadataElementsWithServices
 
   liftEff $ log "Hello sailor!"
