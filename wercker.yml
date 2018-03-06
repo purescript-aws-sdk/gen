@@ -10,8 +10,11 @@ build:
           wget -qO- https://get.haskellstack.org/ | sh
 
           echo Installing purescript...
-          npm install --global --unsafe-perm=true bower purescript pulp
           echo '{ "allow_root": true }' > /root/.bowerrc
+          npm install --global --unsafe-perm=true bower purescript pulp
+
+          echo Downloading submodules...
+          git submodule update --init --recursive
 
     - script:
         name: build
