@@ -1,0 +1,36 @@
+box: node:8.9.4
+build:
+  steps:
+    - script:
+        name: pre-build
+        code: |
+          echo Installing haskell...
+          apt-get update
+          apt-get install -y libgmp3-dev
+          wget -qO- https://get.haskellstack.org/ | sh
+
+          echo Installing purescript...
+          npm install --global --unsafe-perm=true bower purescript pulp
+          echo '{ "allow_root": true }' > /root/.bowerrc
+
+    - script:
+        name: build
+        code: |
+          echo Building project...
+          make clean init build run
+
+    - script:
+        name: test
+        code: |
+          echo Testing project...
+          make test-all
+
+    - script:
+        name: deploy
+        code: |
+          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
+            echo Deploying project...
+            make release-all
+          else
+            echo Branch $WERCKER_GIT_BRANCH, nothing to do
+          fi
