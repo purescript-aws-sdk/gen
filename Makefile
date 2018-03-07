@@ -24,17 +24,21 @@ run:
 
 init-all:
 	cd ${DIR_PS_PROJECT} && bower update && pulp build
-	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c ' \
-		cp -pR ${DIR_PS_PROJECT}/bower_components ${DIR_PS_PROJECTS}/$$0 && \
-		cp -pR ${DIR_PS_PROJECT}/output ${DIR_PS_PROJECTS}/$$0 && \
-		rm -fr ${DIR_PS_PROJECTS}/$$0/output/${DIR_PS_PROJECT_OUTPUT_NAME} || \
-		true'
+	for project in ${DIR_PS_PROJECTS}/*; do \
+		cp -pR ${DIR_PS_PROJECT}/bower_components $${project}; \
+		cp -pR ${DIR_PS_PROJECT}/output $${project}; \
+		rm -fr ${project}/output/${DIR_PS_PROJECT_OUTPUT_NAME}; \
+	done
 
 test-all: init-all
-	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'make test-$$0 || exit 255'
+	for project in ${DIR_PS_PROJECTS}/*; do \
+		make test-$$(basename $${project}) || break; \
+	done
 
 release-all: init-all
-	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'make release-$$0 || exit 255'
+	for project in ${DIR_PS_PROJECTS}/*; do \
+		make release-$$(basename $${project}) || break; \
+	done
 
 create-git-%:
 	curl 'https://api.github.com/orgs/purescript-aws-sdk/repos' \
