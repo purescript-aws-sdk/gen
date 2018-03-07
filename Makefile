@@ -7,6 +7,7 @@ GITHUB_TOKEN ?= $(error Requires a github personal access token with public_repo
 
 DIR_PS_PROJECTS := aws-sdk-purs
 DIR_PS_PROJECT := ${DIR_PS_PROJECTS}/purescript-aws-acm
+DIR_PS_PROJECT_OUTPUT_NAME := AWS.ACM
 DIR_TMP := /tmp/aws-sdk-purs
 
 clean:
@@ -22,8 +23,12 @@ run:
 	pulp run
 
 init-all:
-	cd ${DIR_PS_PROJECT} && bower update
-	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'cp -R ${DIR_PS_PROJECT}/bower_components ${DIR_PS_PROJECTS}/$$0 || true'
+	cd ${DIR_PS_PROJECT} && bower update && pulp build
+	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c ' \
+		cp -pR ${DIR_PS_PROJECT}/bower_components ${DIR_PS_PROJECTS}/$$0 && \
+		cp -pR ${DIR_PS_PROJECT}/output ${DIR_PS_PROJECTS}/$$0 && \
+		rm -fr ${DIR_PS_PROJECTS}/$$0/output/${DIR_PS_PROJECT_OUTPUT_NAME} || \
+		true'
 
 test-all: init-all
 	ls ${DIR_PS_PROJECTS} | xargs -n1 -P2 sh -c 'make test-$$0 || exit 255'
