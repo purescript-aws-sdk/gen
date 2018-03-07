@@ -48,7 +48,7 @@ build:
         code: |
           if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
             echo Deploying project...
-            make release-all
+            GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-all
           else
             echo Branch $WERCKER_GIT_BRANCH, nothing to do
           fi
