@@ -71,4 +71,5 @@ release-%:
 	make git-push-$*
 	cd ${DIR_PS_PROJECTS}/$* && \
 		pulp version ${VERSION} && \
-		yes | pulp publish
+		yes | pulp publish --no-push && \
+		git push origin v${VERSION}
