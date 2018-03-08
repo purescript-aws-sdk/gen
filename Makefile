@@ -30,12 +30,12 @@ init-all:
 		rm -fr ${project}/output/${DIR_PS_PROJECT_OUTPUT_NAME}; \
 	done
 
-test-all: init-all
+test-all:
 	for project in ${DIR_PS_PROJECTS}/*; do \
 		make test-$$(basename $${project}) || break 0 2>/dev/null; \
 	done
 
-release-all: init-all
+release-all:
 	for project in ${DIR_PS_PROJECTS}/*; do \
 		make release-$$(basename $${project}) || break 0 2>/dev/null; \
 	done
