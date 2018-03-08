@@ -64,19 +64,12 @@ test-%:
 	cd ${DIR_PS_PROJECTS}/$* && pulp build
 
 release-%:
-	echo "create-git-$* $$(date)"
 	make create-git-$*
-	echo "git-rebase-$* $$(date)"
 	make git-rebase-$*
-	echo "test-$* $$(date)"
 	make test-$*
 
-	echo "git-push-$* $$(date)"
 	make git-push-$*
 	cd ${DIR_PS_PROJECTS}/$* && \
-		echo "pulp-version $* $$(date)" && \
 		pulp version ${VERSION} && \
-		echo "pulp-publish $* $$(date)" && \
 		yes | pulp publish --no-push && \
-		echo "git push $* $$(date)" && \
 		git push origin v${VERSION}
