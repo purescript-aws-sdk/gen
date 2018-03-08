@@ -3,7 +3,7 @@ command-timeout: 60
 build:
   steps:
     - add-ssh-key:
-        keyname: GITHUB_DEPLOY_KEY
+        keyname: GITHUB_SSH
         host: github.com
     - add-to-known_hosts:
         hostname: github.com
