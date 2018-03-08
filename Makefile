@@ -73,8 +73,10 @@ release-%:
 
 	echo "git-push-$* $$(date)"
 	make git-push-$*
-	echo "pulp-version + pulp publish + git push $* $$(date)"
 	cd ${DIR_PS_PROJECTS}/$* && \
+		echo "pulp-version $* $$(date)" && \
 		pulp version ${VERSION} && \
+		echo "pulp-publish $* $$(date)" && \
 		yes | pulp publish --no-push && \
+		echo "git push $* $$(date)" && \
 		git push origin v${VERSION}
