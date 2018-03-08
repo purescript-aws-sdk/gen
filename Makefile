@@ -32,12 +32,12 @@ init-all:
 
 test-all: init-all
 	for project in ${DIR_PS_PROJECTS}/*; do \
-		make test-$$(basename $${project}) || break; \
+		make test-$$(basename $${project}) || break 0 2>/dev/null; \
 	done
 
 release-all: init-all
 	for project in ${DIR_PS_PROJECTS}/*; do \
-		make release-$$(basename $${project}) || break; \
+		make release-$$(basename $${project}) || break 0 2>/dev/null; \
 	done
 
 create-git-%:
