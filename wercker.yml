@@ -41,7 +41,7 @@ build:
         name: test
         code: |
           echo Testing project...
-          make test-all
+          make release-all
 
     - script:
         name: deploy
