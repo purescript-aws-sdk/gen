@@ -35,7 +35,7 @@ build:
         name: build
         code: |
           echo Building project...
-          make clean init build run
+          make clean init build run init-all
 
     - script:
         name: test
