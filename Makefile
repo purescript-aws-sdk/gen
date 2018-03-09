@@ -80,6 +80,6 @@ release-%:
 
 	make git-push-$*
 	cd ${DIR_PS_PROJECTS}/$* && \
-		pulp version ${VERSION} && \
+		yes c | pulp version ${VERSION} && \
 		yes | pulp publish --no-push && \
 		git push origin --tags
