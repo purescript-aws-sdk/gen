@@ -1,7 +1,9 @@
 .DEFAULT_GOAL := build
 
 VERSION_AWS := $(shell cat aws-sdk-js/package.json | jq -r .version)
-VERSION := 0.0.$(shell git log --oneline | wc -l | tr -d '[:space:]')
+
+VERSION_MAJ_MIN := 0.0
+VERSION := ${VERSION_MAJ_MIN}.$$(git fetch --tags && git tag -l v${VERSION_MAJ_MIN}.* | wc -l | tr -d '[:space:]')
 
 GITHUB_TOKEN ?= $(error Requires a github personal access token with public_repo scope: https://github.com/settings/tokens)
 
