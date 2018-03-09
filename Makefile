@@ -54,7 +54,9 @@ delete-git-%:
 		-X DELETE
 
 git-rebase-%:
-	rm -fr ${DIR_TMP} && mkdir -p ${DIR_TMP} || true
+	rm -fr ${DIR_TMP}/$* ${DIR_PS_PROJECTS}/$*/.git
+	mkdir -p ${DIR_TMP}
+
 	git clone git@github.com:${GITHUB_OWNER}/$*.git ${DIR_TMP}/$*
 	mv ${DIR_TMP}/$*/.git ${DIR_PS_PROJECTS}/$*
 	rm -fr ${DIR_TMP}/$*
