@@ -17,11 +17,13 @@ import Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Data.Foreign as Foreign
+import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Foreign.Class (class Decode, class Encode)
 import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
 import Data.Foreign.NullOrUndefined as NullOrUndefined
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
 import Data.StrMap as StrMap
 
