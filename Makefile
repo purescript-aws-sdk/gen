@@ -17,6 +17,7 @@ clean:
 	rm -fr aws-sdk-purs bower_components output
 
 init:
+	git submodule update --init --recursive
 	bower update
 
 build:

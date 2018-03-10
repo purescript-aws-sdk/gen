@@ -28,9 +28,6 @@ build:
           echo Configure pulp...
           echo $GITHUB_PULP_TOKEN | pulp login
 
-          echo Downloading submodules...
-          git submodule update --init --recursive
-
     - script:
         name: build
         code: |
