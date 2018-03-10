@@ -6,6 +6,7 @@ VERSION_MAJ_MIN := 0.0
 VERSION := ${VERSION_MAJ_MIN}.$$(git fetch --tags && git tag -l v${VERSION_MAJ_MIN}.* | wc -l | tr -d '[:space:]')
 
 GITHUB_TOKEN ?= $(error Requires a github personal access token with public_repo scope: https://github.com/settings/tokens)
+GITHUB_OWNER := purescript-aws-sdk
 
 DIR_PS_PROJECTS := aws-sdk-purs
 DIR_PS_PROJECT := ${DIR_PS_PROJECTS}/purescript-aws-acm
@@ -43,13 +44,20 @@ release-all:
 	done
 
 create-git-%:
-	curl 'https://api.github.com/orgs/purescript-aws-sdk/repos' \
-		-d '{ "name": "$*", "auto_init": true }' \
-		-H 'Authorization: token ${GITHUB_TOKEN}'
+	curl 'https://api.github.com/orgs/${GITHUB_OWNER}/repos' \
+		-H 'Authorization: token ${GITHUB_TOKEN}' \
+		-d '{ "name": "$*", "auto_init": true, "has_issues": false, "has_projects": false, "has_wiki": false }'
+
+delete-git-%:
+	curl 'https://api.github.com/repos/${GITHUB_OWNER}/$*' \
+		-H 'Authorization: token ${GITHUB_TOKEN}' \
+		-X DELETE
 
 git-rebase-%:
-	rm -fr ${DIR_TMP} && mkdir -p ${DIR_TMP} || true
-	git clone git@github.com:purescript-aws-sdk/$*.git ${DIR_TMP}/$*
+	rm -fr ${DIR_TMP}/$* ${DIR_PS_PROJECTS}/$*/.git
+	mkdir -p ${DIR_TMP}
+
+	git clone git@github.com:${GITHUB_OWNER}/$*.git ${DIR_TMP}/$*
 	mv ${DIR_TMP}/$*/.git ${DIR_PS_PROJECTS}/$*
 	rm -fr ${DIR_TMP}/$*
 
@@ -72,6 +80,6 @@ release-%:
 
 	make git-push-$*
 	cd ${DIR_PS_PROJECTS}/$* && \
-		pulp version ${VERSION} && \
+		yes c | pulp version ${VERSION} && \
 		yes | pulp publish --no-push && \
 		git push origin --tags
