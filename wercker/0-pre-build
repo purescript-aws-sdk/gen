@@ -1,0 +1,17 @@
+#!/bin/bash -e
+
+echo Installing haskell...
+apt-get update
+apt-get install -y jq libgmp3-dev
+wget -qO- https://get.haskellstack.org/ | sh
+
+echo Installing purescript...
+echo '{ "allow_root": true }' > /root/.bowerrc
+npm install --global --unsafe-perm=true bower purescript pulp
+
+echo Configurring git...
+git config --global user.email "p.vinchon@gmail.com"
+git config --global user.name "Philippe Vinchon via CI"
+
+echo Configure pulp...
+echo $GITHUB_PULP_TOKEN | pulp login
