@@ -3,7 +3,8 @@
 VERSION_AWS := $(shell cat aws-sdk-js/package.json | jq -r .version)
 
 VERSION_MAJ_MIN := 0.0
-VERSION := ${VERSION_MAJ_MIN}.$$((1 + $$(git fetch --tags && git tag -l v${VERSION_MAJ_MIN}.[^0] | wc -l)))
+VERSION_PATCH := $(shell git tag -l v${VERSION_MAJ_MIN}.[^0] | wc -l | tr -d '[:space:]')
+VERSION := ${VERSION_MAJ_MIN}.$$((${VERSION_PATCH} + 1))
 
 GITHUB_TOKEN ?= $(error Requires a github personal access token with public_repo scope: https://github.com/settings/tokens)
 GITHUB_OWNER := purescript-aws-sdk
