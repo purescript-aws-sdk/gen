@@ -5,21 +5,24 @@ import Data.Foreign.NullOrUndefined (unNullOrUndefined)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, replace, replaceAll, take, toLower)
 
-import Aws (ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
+import Aws (MetadataElement(MetadataElement), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
 import Printer.PureScript.Comment (comment)
 
-function :: String -> ServiceOperation -> String
-function name (ServiceOperation serviceOperation) = """
+function :: MetadataElement -> String -> ServiceOperation -> String
+function (MetadataElement { name: serviceName }) methodName (ServiceOperation serviceOperation) = """
 {{documentation}}
-{{camelCaseName}} :: forall eff. {{inputType}} Aff (exception :: EXCEPTION | eff) {{outputType}}
-{{camelCaseName}} = Request.request serviceName "{{camelCaseName}}" {{inputFallback}}
-""" # replaceAll (Pattern "{{camelCaseName}}") (Replacement camelCaseName)
+{{camelCaseMethodName}} :: forall eff. {{inputType}} Aff (exception :: EXCEPTION | eff) {{outputType}}
+{{camelCaseMethodName}} = Request.request service method {{inputFallback}} where
+    service = Request.ServiceName "{{serviceName}}"
+    method = Request.MethodName "{{camelCaseMethodName}}"
+""" # replace (Pattern "{{serviceName}}") (Replacement serviceName)
+    # replaceAll (Pattern "{{camelCaseMethodName}}") (Replacement camelCaseMethodName)
     # replace (Pattern "{{inputType}}") (Replacement inputType)
     # replace (Pattern "{{inputFallback}}") (Replacement inputFallback)
     # replace (Pattern "{{outputType}}") (Replacement outputType)
     # replace (Pattern "{{documentation}}") (Replacement documentation)
         where
-            camelCaseName = (take 1 name # toLower) <> (drop 1 name)
+            camelCaseMethodName = (take 1 methodName # toLower) <> (drop 1 methodName)
             inputType = unNullOrUndefined serviceOperation.input # maybe "" (\(ServiceShapeName { shape }) -> shape <> " ->")
             inputFallback = unNullOrUndefined serviceOperation.input # maybe "(Types.NoInput unit)" (\_ -> "")
             outputType =  unNullOrUndefined serviceOperation.output # maybe "Types.NoOutput" (\(ServiceShapeName { shape }) -> shape)
