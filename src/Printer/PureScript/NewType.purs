@@ -2,7 +2,7 @@ module Printer.PureScript.NewType where
 
 import Prelude
 
-import Aws (MetadataElement(MetadataElement), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
+import AWS (MetadataElement(MetadataElement), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
 import Data.Array (elem, partition)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..), unNullOrUndefined)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)

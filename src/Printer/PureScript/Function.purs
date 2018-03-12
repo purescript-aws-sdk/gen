@@ -5,7 +5,7 @@ import Data.Foreign.NullOrUndefined (unNullOrUndefined)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, replace, replaceAll, take, toLower)
 
-import Aws (MetadataElement(MetadataElement), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
+import AWS (MetadataElement(MetadataElement), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
 import Printer.PureScript.Comment (comment)
 
 function :: MetadataElement -> String -> ServiceOperation -> String
