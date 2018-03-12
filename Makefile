@@ -3,7 +3,7 @@
 VERSION_AWS := $(shell cat aws-sdk-js/package.json | jq -r .version)
 
 VERSION_MAJ_MIN := 0.0
-VERSION_PATCH := $(shell git tag -l v${VERSION_MAJ_MIN}.[^0] | wc -l | tr -d '[:space:]')
+VERSION_PATCH := $(shell git fetch --tags && git tag -l v${VERSION_MAJ_MIN}.[^0] | wc -l | tr -d '[:space:]')
 VERSION := ${VERSION_MAJ_MIN}.$$((${VERSION_PATCH} + 1))
 
 GITHUB_TOKEN ?= $(error Requires a github personal access token with public_repo scope: https://github.com/settings/tokens)
