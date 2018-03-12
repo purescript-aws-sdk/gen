@@ -79,6 +79,16 @@ test-%:
 	cd ${DIR_PS_PROJECTS}/$* && pulp build
 
 release-%:
+ifneq ($(shell git rev-parse --abbrev-ref HEAD), master)
+	$(error Cannot release: You aren't on the master branch)
+endif
+ifneq ($(shell git rev-list HEAD...origin/master --count),0)
+	$(error Cannot release: Your branch is not up to date)
+endif
+ifneq ($(shell git status --porcelain),)
+	$(error Cannot release: You have unstaged changes)
+endif
+
 	make create-git-$*
 	make git-rebase-$*
 
