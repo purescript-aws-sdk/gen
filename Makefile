@@ -45,6 +45,9 @@ release-all:
 		make release-$$(basename $${project}) || break 0 2>/dev/null; \
 	done
 
+	git tag v${VERSION}
+	git push origin --tags
+
 create-git-%:
 	curl 'https://api.github.com/orgs/${GITHUB_OWNER}/repos' \
 		-H 'Authorization: token ${GITHUB_TOKEN}' \
