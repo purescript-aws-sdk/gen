@@ -29,7 +29,5 @@ import Data.StrMap as StrMap
 
 import AWS.Request as Request
 import AWS.Request.Types as Types
-
-serviceName = "{{serviceName}}" :: String
-""" # replaceAll (Pattern "{{serviceName}}") (Replacement name)
+""" # replace (Pattern "{{serviceName}}") (Replacement name)
     # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment $ unNullOrUndefined documentation)

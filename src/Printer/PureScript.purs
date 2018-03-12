@@ -27,7 +27,7 @@ clientFilePath path (metadata@MetadataElement { name }) service = concat [client
 client :: MetadataElement -> Service -> String
 client metadata (Service { operations, shapes, documentation }) =
     (header metadata documentation) <>
-    (toArrayWithKey (\name -> \serviceOperation -> function name serviceOperation) operations # joinWith "") <>
+    (toArrayWithKey (\name -> \serviceOperation -> function metadata name serviceOperation) operations # joinWith "") <>
     (toArrayWithKey (\name -> \serviceShape -> newType metadata name serviceShape) shapes # joinWith "")
 
 project :: forall eff. FilePath -> MetadataElement -> Service -> Aff(fs :: FS | eff) Unit
