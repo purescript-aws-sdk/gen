@@ -1,0 +1,29 @@
+#!/bin/bash -e
+
+function usage() {
+    cat <<EOM
+Usage: retry TIMES COMMAND [ARG]...
+Run COMMAND up to TIMES until it succeeded.
+EOM
+}
+
+function init() {
+    re='^[0-9]+$'
+    if ! [[ "$1" =~ $re ]] ; then
+        usage
+        exit 1
+    fi
+
+    TIMES=$(($1))
+    COMMAND=${@:2}
+}
+
+function run() {
+    until $COMMAND || [ $TIMES -eq 0 ]; do
+        echo TIMES $TIMES
+        let TIMES-=1
+    done
+}
+
+init $@
+run
