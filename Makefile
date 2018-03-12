@@ -78,10 +78,14 @@ test-%:
 release-%:
 	make create-git-$*
 	make git-rebase-$*
-	make test-$*
 
-	make git-push-$*
-	cd ${DIR_PS_PROJECTS}/$* && \
-		yes c | pulp version ${VERSION} && \
-		yes | pulp publish --no-push && \
-		git push origin --tags
+	if [ ! -z "$$(cd ${DIR_PS_PROJECTS}/$* && git tag | grep "^v${VERSION}$$")" ]; then \
+		echo "Version ${VERSION} already released"; \
+	else \
+		make test-$*; \
+		make git-push-$*; \
+		cd ${DIR_PS_PROJECTS}/$* && \
+			yes c | pulp version ${VERSION} && \
+			yes | pulp publish --no-push && \
+			git push origin --tags; \
+	fi
