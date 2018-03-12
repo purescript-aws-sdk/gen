@@ -100,7 +100,6 @@ endif
 		make test-$*; \
 		make git-push-$*; \
 		cd ${DIR_PS_PROJECTS}/$* && \
-			yes c | pulp version ${VERSION} && \
-			yes | pulp publish --no-push && \
+			git tag v${VERSION} && \
 			git push origin --tags; \
 	fi
