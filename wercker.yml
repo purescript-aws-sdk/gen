@@ -11,140 +11,40 @@ build:
 
     - script:
         name: pre-build
-        code: |
-          echo Installing haskell...
-          apt-get update
-          apt-get install -y jq libgmp3-dev
-          wget -qO- https://get.haskellstack.org/ | sh
-
-          echo Installing purescript...
-          echo '{ "allow_root": true }' > /root/.bowerrc
-          npm install --global --unsafe-perm=true bower purescript pulp
-
-          echo Configurring git...
-          git config --global user.email "p.vinchon@gmail.com"
-          git config --global user.name "Philippe Vinchon via CI"
-
-          echo Configure pulp...
-          echo $GITHUB_PULP_TOKEN | pulp login
+        code: ./wercker/0-pre-build
 
     - script:
         name: build
-        code: |
-          echo Building project...
-          make clean init build run init-all
+        code: ./wercker/1-build
 
     - script:
         name: test
-        code: |
-          echo Testing project...
-          make test-all
+        code: ./wercker/2-test
 
     - script:
+        name: deploy-0
+        code: ./wercker/3-deploy [a-c]
+    - script:
         name: deploy-1
-        code: |
-          FILTER=[a-c]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [d-f]
     - script:
         name: deploy-2
-        code: |
-          FILTER=[d-f]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [g-i]
     - script:
         name: deploy-3
-        code: |
-          FILTER=[g-i]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [j-l]
     - script:
         name: deploy-4
-        code: |
-          FILTER=[j-l]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [m-o]
     - script:
         name: deploy-5
-        code: |
-          FILTER=[m-o]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [p-r]
     - script:
         name: deploy-6
-        code: |
-          FILTER=[p-r]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [s-u]
     - script:
         name: deploy-7
-        code: |
-          FILTER=[s-u]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [v-x]
     - script:
         name: deploy-8
-        code: |
-          FILTER=[v-x]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
-    - script:
-        name: deploy-9
-        code: |
-          FILTER=[y-z]
-          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
-            echo Deploying project...
-            for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
-              GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
-            done
-          else
-            echo Branch $WERCKER_GIT_BRANCH, nothing to do
-          fi
+        code: ./wercker/3-deploy [y-z]

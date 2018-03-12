@@ -1,0 +1,4 @@
+#!/bin/bash -e
+
+echo Testing project...
+make test-all

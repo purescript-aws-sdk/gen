@@ -1,0 +1,11 @@
+#!/bin/bash -e
+
+FILTER=$1
+if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
+    echo Deploying project...
+    for project in aws-sdk-purs/purescript-aws-${FILTER}*; do
+        GITHUB_TOKEN=$GITHUB_PUBLIC_REPO_TOKEN make release-$(basename ${project}) || break 0 2>/dev/null;
+    done
+else
+    echo Branch $WERCKER_GIT_BRANCH, nothing to do
+fi
