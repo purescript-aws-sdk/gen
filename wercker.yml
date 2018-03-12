@@ -2,13 +2,6 @@ box: node:8.9.4
 command-timeout: 60
 build:
   steps:
-    - add-ssh-key:
-        keyname: GITHUB_SSH
-        host: github.com
-    - add-to-known_hosts:
-        hostname: github.com
-        fingerprint: 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48
-
     - script:
         name: pre-build
         code: |
@@ -20,13 +13,6 @@ build:
           echo Installing purescript...
           echo '{ "allow_root": true }' > /root/.bowerrc
           npm install --global --unsafe-perm=true bower purescript pulp
-
-          echo Configurring git...
-          git config --global user.email "p.vinchon@gmail.com"
-          git config --global user.name "Philippe Vinchon via CI"
-
-          echo Configure pulp...
-          echo $GITHUB_PULP_TOKEN | pulp login
 
     - script:
         name: build
