@@ -78,7 +78,7 @@ git-push-%:
 build-%:
 	cd ${DIR_PS_PROJECTS}/$* && \
 		pulp build && \
-		pulp doc && mv generated-docs docs
+		pulp docs && rm -fr docs && mv generated-docs docs
 
 release-%:
 ifneq ($(shell git rev-parse --abbrev-ref HEAD), master)
