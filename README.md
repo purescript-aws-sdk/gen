@@ -1,6 +1,5 @@
 # Gen
 
-[![Latest Release](https://pursuit.purescript.org/packages/purescript-aws-acm/badge)](https://pursuit.purescript.org/packages/purescript-aws-acm)
 [![Build Status](https://app.wercker.com/status/18ab1a4db84072ab2396aa96b036c63f/s/master)](https://app.wercker.com/project/byKey/18ab1a4db84072ab2396aa96b036c63f)
 
 Generates the purescript-aws-sdk modules from the [AWS SDK JS](https://github.com/aws/aws-sdk-js).
