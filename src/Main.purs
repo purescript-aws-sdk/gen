@@ -17,7 +17,7 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Aff (FS, readTextFile, readdir, writeTextFile)
 import Node.Path (FilePath, concat, dirname)
 
-import Aws (Metadata(Metadata), MetadataElement, Service, metadataFileRegex)
+import AWS (Metadata(Metadata), MetadataElement, Service, metadataFileRegex)
 import Eff (liftEither, liftExcept, liftMaybe)
 import Printer.PureScript (client, clientFilePath, project)
 import FS (mkdirRecursive)

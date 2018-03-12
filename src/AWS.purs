@@ -1,4 +1,4 @@
-module Aws where
+module AWS where
 
 import Prelude
 import Data.Either (Either)

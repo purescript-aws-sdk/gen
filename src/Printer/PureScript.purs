@@ -10,7 +10,7 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Aff (FS, readTextFile, writeTextFile)
 import Node.Path (FilePath, concat)
 
-import Aws (MetadataElement(MetadataElement), Service(Service))
+import AWS (MetadataElement(MetadataElement), Service(Service))
 import FS (PartitionPaths(..), mkdirRecursive, partitionPaths, readdirRecursive)
 import Printer.PureScript.Header (header)
 import Printer.PureScript.Function (function)

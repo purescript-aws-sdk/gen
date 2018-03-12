@@ -5,7 +5,7 @@ import Data.Foreign.NullOrUndefined (NullOrUndefined, unNullOrUndefined)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), replace, replaceAll)
 
-import Aws (MetadataElement(MetadataElement))
+import AWS (MetadataElement(MetadataElement))
 import Printer.PureScript.Comment (comment)
 
 header :: MetadataElement -> NullOrUndefined String -> String
