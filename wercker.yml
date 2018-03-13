@@ -22,8 +22,8 @@ build:
           npm install --global --unsafe-perm=true bower purescript pulp
 
           echo Configurring git...
-          git config --global user.email "p.vinchon@gmail.com"
-          git config --global user.name "Philippe Vinchon via CI"
+          git config --global user.email "$GITHUB_SSH_USER_NAME"
+          git config --global user.name "$GITHUB_SSH_USER_EMAIL"
 
 
     - script:
