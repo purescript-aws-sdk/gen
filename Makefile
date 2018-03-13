@@ -87,7 +87,6 @@ release-%:
 	if [ ! -z "$$(cd ${DIR_PS_PROJECTS}/$* && git tag | grep "^v${VERSION}$$")" ]; then \
 		echo "Version ${VERSION} already released"; \
 	else \
-		make test-$*; \
 		make git-push-$*; \
 		cd ${DIR_PS_PROJECTS}/$* && \
 			git tag v${VERSION} && \
