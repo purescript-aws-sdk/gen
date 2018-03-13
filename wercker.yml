@@ -37,3 +37,13 @@ build:
         code: |
           echo Testing project...
           make test-all
+
+    - script:
+        name: deploy
+        code: |
+          if [ "$WERCKER_GIT_BRANCH" == "master" ]; then
+            echo Deploying project...
+            GITHUB_TOKEN=$GITHUB_TOKEN_PUBLIC_REPO make release-all
+          else
+            echo Branch $WERCKER_GIT_BRANCH, nothing to do
+          fi
