@@ -75,7 +75,7 @@ git-push-%:
 	cd ${DIR_PS_PROJECTS}/$* && \
 		git push origin master
 
-build-%:
+test-%:
 	cd ${DIR_PS_PROJECTS}/$* && \
 		pulp build && \
 		pulp docs && rm -fr docs && mv generated-docs docs
@@ -97,7 +97,7 @@ endif
 	if [ ! -z "$$(cd ${DIR_PS_PROJECTS}/$* && git tag | grep "^v${VERSION}$$")" ]; then \
 		echo "Version ${VERSION} already released"; \
 	else \
-		make build-$*; \
+		make test-$*; \
 		make git-push-$*; \
 		cd ${DIR_PS_PROJECTS}/$* && \
 			git tag v${VERSION} && \
