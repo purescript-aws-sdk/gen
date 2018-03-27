@@ -15,8 +15,8 @@ module AWS.{{serviceName}} where
 
 import Prelude
 import Control.Monad.Aff (Aff)
+import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import Data.Foreign as Foreign
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Foreign.Class (class Decode, class Encode)
 import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
@@ -25,9 +25,18 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import Data.StrMap as StrMap
+import Data.StrMap (StrMap) as StrMap
 
-import AWS.Request as Request
-import AWS.Request.Types as Types
-""" # replace (Pattern "{{serviceName}}") (Replacement name)
+import AWS.Service (Options, Service, ServiceName(..), service) as AWS
+import AWS.Request (MethodName(..), request) as AWS
+import AWS.Request.Types (NoArguments(..), NoInput(..), NoOutput(..), Timestamp(..)) as Types
+
+newtype {{serviceName}}Service = {{serviceName}}Service AWS.Service
+
+service :: forall eff. AWS.Options -> Eff (exception :: EXCEPTION | eff) {{serviceName}}Service
+service options = do
+    let serviceName = AWS.ServiceName "{{serviceName}}"
+    service' <- AWS.service serviceName options
+    pure $ {{serviceName}}Service service'
+""" # replaceAll (Pattern "{{serviceName}}") (Replacement name)
     # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment $ unNullOrUndefined documentation)

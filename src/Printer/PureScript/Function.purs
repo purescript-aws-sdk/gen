@@ -5,17 +5,16 @@ import Data.Foreign.NullOrUndefined (unNullOrUndefined)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, replace, replaceAll, take, toLower)
 
-import AWS (MetadataElement(MetadataElement), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
+import AWS (MetadataElement(..), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
 import Printer.PureScript.Comment (comment)
 
 function :: MetadataElement -> String -> ServiceOperation -> String
-function (MetadataElement { name: serviceName }) methodName (ServiceOperation serviceOperation) = """
+function (MetadataElement {name: serviceName}) methodName (ServiceOperation serviceOperation) = """
 {{documentation}}
-{{camelCaseMethodName}} :: forall eff. {{inputType}} Aff (exception :: EXCEPTION | eff) {{outputType}}
-{{camelCaseMethodName}} = Request.request service method {{inputFallback}} where
-    service = Request.ServiceName "{{serviceName}}"
-    method = Request.MethodName "{{camelCaseMethodName}}"
-""" # replace (Pattern "{{serviceName}}") (Replacement serviceName)
+{{camelCaseMethodName}} :: forall eff. {{serviceName}}Service -> {{inputType}} Aff (exception :: EXCEPTION | eff) {{outputType}}
+{{camelCaseMethodName}} ({{serviceName}}Service serviceImpl) = AWS.request serviceImpl method {{inputFallback}} where
+    method = AWS.MethodName "{{camelCaseMethodName}}"
+""" # replaceAll (Pattern "{{serviceName}}") (Replacement serviceName)
     # replaceAll (Pattern "{{camelCaseMethodName}}") (Replacement camelCaseMethodName)
     # replace (Pattern "{{inputType}}") (Replacement inputType)
     # replace (Pattern "{{inputFallback}}") (Replacement inputFallback)
