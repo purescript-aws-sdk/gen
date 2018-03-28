@@ -1,6 +1,6 @@
 module Main where
 
-import Prelude (Unit, bind, map, pure, (#), ($), (>>>))
+import Prelude
 import Control.Monad.Aff (Aff, Fiber, apathize, launchAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -19,9 +19,11 @@ import Node.Path (FilePath, concat, dirname)
 
 import AWS (Metadata(Metadata), MetadataElement, Service, metadataFileRegex)
 import Eff (liftEither, liftExcept, liftMaybe)
-import Printer.PureScript (client, clientFilePath, project)
+import Printer.PureScript (filePath, project)
+import Printer.PureScript.Module as ModulePrinter
+import Printer.PureScript.Requests as RequestsPrinter
+import Printer.PureScript.Types as TypesPrinter
 import FS (mkdirRecursive)
-
 
 apisMetadataFilePath = "./aws-sdk-js/apis/metadata.json" :: FilePath
 apisPath = "./aws-sdk-js/apis/" :: FilePath
@@ -46,15 +48,24 @@ metadataWithService (Tuple metadata filePath) = do
   pure $ Tuple metadata service
 
 createClientProject :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (fs :: FS | eff) Unit
-createClientProject path (Tuple metadata service) = project path metadata service
+createClientProject path (Tuple metadata _) = project path metadata
 
-createClientFile :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (fs :: FS | eff) Unit
-createClientFile path (Tuple metadata service) = do
-  let filePath = clientFilePath path metadata service
-  let fileContent = client metadata service
+createClientFiles :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (exception :: EXCEPTION, fs :: FS | eff) Unit
+createClientFiles path (Tuple metadata service) = do
+  let filePath' = filePath path metadata
+  _ <- apathize $ mkdirRecursive $ dirname $ filePath' ""
 
-  _ <- apathize $ mkdirRecursive $ dirname filePath
-  writeTextFile UTF8 filePath fileContent
+  let moduleFilePath = filePath' $ ModulePrinter.fileName metadata
+  let moduleContent = ModulePrinter.output metadata service
+  _ <- writeTextFile UTF8 moduleFilePath moduleContent
+
+  let requestsFilePath = filePath' $ RequestsPrinter.fileName metadata
+  let requestsContent = RequestsPrinter.output metadata service
+  _ <- writeTextFile UTF8 requestsFilePath requestsContent
+
+  let typesFilePath = filePath' $ TypesPrinter.fileName metadata
+  let typesContent = TypesPrinter.output metadata service
+  writeTextFile UTF8 typesFilePath typesContent
 
 main :: forall eff. Eff (fs :: FS, exception :: EXCEPTION, console :: CONSOLE | eff) (Fiber (fs :: FS, exception :: EXCEPTION , console :: CONSOLE | eff) Unit)
 main = launchAff do
@@ -72,6 +83,6 @@ main = launchAff do
   let metadataElementsWithApiFilePaths = map (metadataWithApiFilePath apisPath) metadataElementsWithApiFileName
   metadataElementsWithServices <- traverse metadataWithService metadataElementsWithApiFilePaths
   _ <- traverse (createClientProject clientsPath) metadataElementsWithServices
-  _ <- traverse (createClientFile clientsPath) metadataElementsWithServices
+  _ <- traverse (createClientFiles clientsPath) metadataElementsWithServices
 
   liftEff $ log "Hello sailor!"
