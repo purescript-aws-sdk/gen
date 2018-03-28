@@ -1,16 +1,41 @@
-module Printer.PureScript.NewType where
+module Printer.PureScript.Types where
 
 import Prelude
-
-import AWS (MetadataElement(MetadataElement), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
 import Data.Array (elem, partition)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..), unNullOrUndefined)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.StrMap (StrMap, filterKeys, isEmpty, toArrayWithKey, toAscUnfoldable)
 import Data.String (Pattern(Pattern), Replacement(..), drop, dropWhile, joinWith, replace, replaceAll, take, toUpper)
+import Data.StrMap (StrMap, filterKeys, isEmpty, toArrayWithKey, toAscUnfoldable)
 import Data.Tuple (fst, snd)
+
+import AWS (MetadataElement(MetadataElement), Service(Service), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
 import Printer.CycledInDeclaration (ServiceName(..), NewTypeName(..), AttributeName(..), notElem)
 import Printer.PureScript.Comment (comment)
+
+fileName :: MetadataElement -> String
+fileName (MetadataElement { name }) = name <> "Types"
+
+output :: MetadataElement -> Service -> String
+output metadataElement (Service { shapes }) =
+    (header metadataElement) <>
+    (toArrayWithKey (\name -> \serviceShape -> newType metadataElement name serviceShape) shapes # joinWith "")
+
+header :: MetadataElement -> String
+header (MetadataElement { name }) = """
+module AWS.{{name}}.Types where
+
+import Prelude
+import Data.Foreign.Class (class Decode, class Encode)
+import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
+import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (class Newtype)
+import Data.StrMap (StrMap) as StrMap
+
+import AWS.Request.Types as Types
+""" # replace (Pattern "{{name}}") (Replacement name)
 
 purescriptTypes :: Array String
 purescriptTypes =
@@ -47,10 +72,10 @@ compatibleType type' = safeType
             else typeNotJs <> "'"
 
 newType :: MetadataElement -> String -> ServiceShape -> String
-newType metadata name serviceShape = output
+newType metadata name serviceShape = typeDefinition
     where
         type' = compatibleType name
-        output = if (elem type' purescriptTypes)
+        typeDefinition = if (elem type' purescriptTypes)
             then ""
             else newType' metadata type' serviceShape
 
@@ -99,7 +124,7 @@ recordFields serviceName newTypeName keyValue required = fields
     where field key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
               # replace (Pattern "{{name}}") (Replacement key)
               # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
-              # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "NullOrUndefined.NullOrUndefined")
+              # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "NullOrUndefined")
               # replace (Pattern "  ") (Replacement " ")
 
           fields = filterKeysNotCycledInDeclaration serviceName newTypeName keyValue # toArrayWithKey field
