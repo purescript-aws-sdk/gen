@@ -8,7 +8,7 @@ This module has been generated with [purescript-aws-sdk/gen](https://github.com/
 
 ```sh
 bower install purescript-aws-{{MODULE_NAME_LOWER}}
-npm install aws-sdk # bower package seems broken :(
+npm install aws-sdk # bower package doesn't work :(
 ```
 
 ## Documentation
