@@ -27,6 +27,7 @@ module AWS.{{name}}.Types where
 import Prelude
 import Data.Foreign.Class (class Decode, class Encode)
 import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
+import Data.Foreign.Generic.Types (Options)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
@@ -35,6 +36,9 @@ import Data.Newtype (class Newtype)
 import Data.StrMap (StrMap) as StrMap
 
 import AWS.Request.Types as Types
+
+options :: Options
+options = defaultOptions { unwrapSingleConstructors = true }
 """ # replace (Pattern "{{name}}") (Replacement name)
 
 purescriptTypes :: Array String
@@ -85,12 +89,9 @@ newType' metadata name serviceShape@(ServiceShape { documentation }) = """
 newtype {{name}} = {{name}} {{type}}
 derive instance newtype{{name}} :: Newtype {{name}} _
 derive instance repGeneric{{name}} :: Generic {{name}} _
-instance show{{name}} :: Show {{name}} where
-  show = genericShow
-instance decode{{name}} :: Decode {{name}} where
-  decode = genericDecode $ defaultOptions { unwrapSingleConstructors = true }
-instance encode{{name}} :: Encode {{name}} where
-  encode = genericEncode $ defaultOptions { unwrapSingleConstructors = true }
+instance show{{name}} :: Show {{name}} where show = genericShow
+instance decode{{name}} :: Decode {{name}} where decode = genericDecode options
+instance encode{{name}} :: Encode {{name}} where encode = genericEncode options
 {{defaultConstructor}}
 """ # replaceAll (Pattern "{{name}}") (Replacement $ name)
     # replace (Pattern "{{type}}") (Replacement $ recordType metadata name serviceShape)
