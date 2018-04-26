@@ -2,7 +2,7 @@
 
 VERSION_AWS := $(shell cat aws-sdk-js/package.json | jq -r .version)
 
-VERSION_MAJ_MIN := 0.2
+VERSION_MAJ_MIN := 0.3
 VERSION_PATCH := $(shell git fetch --tags && git tag -l v${VERSION_MAJ_MIN}.[^0] | wc -l | tr -d '[:space:]')
 VERSION := ${VERSION_MAJ_MIN}.$$((${VERSION_PATCH} + 1))
 
