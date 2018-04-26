@@ -5,9 +5,8 @@ import Data.Either (Either)
 import Data.Foreign.Class (class Decode, class Encode)
 import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
 import Data.Foreign.Generic.Types (Options)
-import Data.Foreign.NullOrUndefined (NullOrUndefined, unNullOrUndefined)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (Maybe, fromMaybe)
 import Data.StrMap (StrMap)
 import Data.String.Regex (Regex, regex)
 import Data.String.Regex.Flags (ignoreCase)
@@ -23,7 +22,7 @@ instance encodeMetadata :: Encode Metadata where encode = genericEncode options
 
 newtype MetadataElement = MetadataElement
   { name :: String
-  , prefix :: NullOrUndefined String
+  , prefix :: Maybe String
   }
 
 derive instance repGenericMetadataElement :: Generic MetadataElement _
@@ -32,15 +31,15 @@ instance encodeMetadataElement :: Encode MetadataElement where encode = genericE
 
 metadataFileRegex :: MetadataElement -> Either String Regex
 metadataFileRegex (MetadataElement element) = pattern where
-  prefix = fromMaybe element.name $ unNullOrUndefined element.prefix
+  prefix = fromMaybe element.name element.prefix
   pattern = regex (prefix <> "-[0-9]{4}-[0-9]{2}-[0-9]{2}.normal.json") ignoreCase
 
 newtype Service = Service
   { shapes :: StrMap ServiceShape
   , operations :: StrMap ServiceOperation
   , metadata :: ServiceMetadata
-  , documentation :: NullOrUndefined String
-  , version :: NullOrUndefined String
+  , documentation :: Maybe String
+  , version :: Maybe String
   }
 
 derive instance repGenericService :: Generic Service _
@@ -53,16 +52,16 @@ newtype ServiceMetadata = ServiceMetadata
   , protocol :: String
   , endpointPrefix :: String
   , apiVersion :: String
-  , uid :: NullOrUndefined String
-  , jsonVersion :: NullOrUndefined String
-  , targetPrefix :: NullOrUndefined String
-  , serviceAbbreviation :: NullOrUndefined String
-  , serviceId :: NullOrUndefined String
-  , signingName :: NullOrUndefined String
-  , xmlNamespace :: NullOrUndefined String
-  , globalEndpoint :: NullOrUndefined String
-  , timestampFormat :: NullOrUndefined String
-  , checksumFormat :: NullOrUndefined String
+  , uid :: Maybe String
+  , jsonVersion :: Maybe String
+  , targetPrefix :: Maybe String
+  , serviceAbbreviation :: Maybe String
+  , serviceId :: Maybe String
+  , signingName :: Maybe String
+  , xmlNamespace :: Maybe String
+  , globalEndpoint :: Maybe String
+  , timestampFormat :: Maybe String
+  , checksumFormat :: Maybe String
   }
 
 derive instance repGenericServiceMetadata :: Generic ServiceMetadata _
@@ -72,15 +71,15 @@ instance encodeServiceMetadata :: Encode ServiceMetadata where encode = genericE
 newtype ServiceOperation = ServiceOperation
   { name :: String
   , http :: ServiceHttp
-  , input :: NullOrUndefined ServiceShapeName
-  , documentation :: NullOrUndefined String
-  , errors :: NullOrUndefined (Array ServiceShapeName)
-  , output :: NullOrUndefined ServiceShapeName
-  , idempotent :: NullOrUndefined Boolean
-  , documentationUrl :: NullOrUndefined String
-  , deprecated :: NullOrUndefined Boolean
-  , authtype :: NullOrUndefined String
-  , alias :: NullOrUndefined String
+  , input :: Maybe ServiceShapeName
+  , documentation :: Maybe String
+  , errors :: Maybe (Array ServiceShapeName)
+  , output :: Maybe ServiceShapeName
+  , idempotent :: Maybe Boolean
+  , documentationUrl :: Maybe String
+  , deprecated :: Maybe Boolean
+  , authtype :: Maybe String
+  , alias :: Maybe String
   }
 
 derive instance repGenericServiceOperation :: Generic ServiceOperation _
@@ -89,30 +88,30 @@ instance encodeServiceOperation :: Encode ServiceOperation where encode = generi
 
 newtype ServiceShape = ServiceShape
   { type :: String
-  , members ::  NullOrUndefined (StrMap ServiceShapeName)
-  , documentation :: NullOrUndefined String
-  , required :: NullOrUndefined (Array String)
-  , member :: NullOrUndefined ServiceShapeName
-  , exception :: NullOrUndefined Boolean
-  , max :: NullOrUndefined Number
-  , min :: NullOrUndefined Number
-  , enum :: NullOrUndefined (Array String)
-  , error :: NullOrUndefined ServiceError
-  , pattern :: NullOrUndefined String
-  , payload :: NullOrUndefined String
-  , value :: NullOrUndefined ServiceShapeName
-  , key :: NullOrUndefined ServiceShapeName
-  , wrapper :: NullOrUndefined Boolean
-  , sensitive :: NullOrUndefined Boolean
-  , fault :: NullOrUndefined Boolean
-  , flattened :: NullOrUndefined Boolean
-  , box :: NullOrUndefined Boolean
-  , deprecated :: NullOrUndefined Boolean
-  , streaming :: NullOrUndefined Boolean
-  , locationName :: NullOrUndefined String
-  , xmlOrder :: NullOrUndefined (Array String)
-  , xmlNamespace :: NullOrUndefined ServiceXmlNamespace
-  , timestampFormat :: NullOrUndefined String
+  , members ::  Maybe (StrMap ServiceShapeName)
+  , documentation :: Maybe String
+  , required :: Maybe (Array String)
+  , member :: Maybe ServiceShapeName
+  , exception :: Maybe Boolean
+  , max :: Maybe Number
+  , min :: Maybe Number
+  , enum :: Maybe (Array String)
+  , error :: Maybe ServiceError
+  , pattern :: Maybe String
+  , payload :: Maybe String
+  , value :: Maybe ServiceShapeName
+  , key :: Maybe ServiceShapeName
+  , wrapper :: Maybe Boolean
+  , sensitive :: Maybe Boolean
+  , fault :: Maybe Boolean
+  , flattened :: Maybe Boolean
+  , box :: Maybe Boolean
+  , deprecated :: Maybe Boolean
+  , streaming :: Maybe Boolean
+  , locationName :: Maybe String
+  , xmlOrder :: Maybe (Array String)
+  , xmlNamespace :: Maybe ServiceXmlNamespace
+  , timestampFormat :: Maybe String
   }
 
 derive instance repGenericServiceShape :: Generic ServiceShape _
@@ -131,8 +130,8 @@ instance encodeServiceHttp :: Encode ServiceHttp where encode = genericEncode op
 
 newtype ServiceError = ServiceError
   { httpStatusCode :: Int
-  , code :: NullOrUndefined String
-  , senderFault :: NullOrUndefined Boolean
+  , code :: Maybe String
+  , senderFault :: Maybe Boolean
   }
 
 derive instance repGenericServiceError :: Generic ServiceError _
