@@ -2,7 +2,6 @@ module Printer.PureScript.Types where
 
 import Prelude
 import Data.Array (elem, partition)
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..), unNullOrUndefined)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String (Pattern(Pattern), Replacement(..), drop, dropWhile, joinWith, replace, replaceAll, take, toUpper)
 import Data.StrMap (StrMap, filterKeys, isEmpty, toArrayWithKey, toAscUnfoldable)
@@ -28,7 +27,6 @@ import Prelude
 import Data.Foreign.Class (class Decode, class Encode)
 import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
 import Data.Foreign.Generic.Types (Options)
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..))
@@ -95,14 +93,14 @@ instance encode{{name}} :: Encode {{name}} where encode = genericEncode options
 {{defaultConstructor}}
 """ # replaceAll (Pattern "{{name}}") (Replacement $ name)
     # replace (Pattern "{{type}}") (Replacement $ recordType metadata name serviceShape)
-    # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment $ unNullOrUndefined documentation)
+    # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment documentation)
     # replace (Pattern "{{defaultConstructor}}") (Replacement $ defaultConstructor metadata name serviceShape)
 
 recordType :: MetadataElement -> String -> ServiceShape -> String
 recordType metadata newTypeName (ServiceShape serviceShape) = case serviceShape of
-    { "type": "list", member: NullOrUndefined (Just (shape)) } -> recordArray shape
-    { "type": "map", value: NullOrUndefined (Just value) } -> recordMap value
-    { "type": "structure", members: NullOrUndefined (Just members), required: NullOrUndefined required } -> recordRecord metadata newTypeName members $ fromMaybe [] required
+    { "type": "list", member: Just shape } -> recordArray shape
+    { "type": "map", value: Just value } -> recordMap value
+    { "type": "structure", members: Just members, required: required } -> recordRecord metadata newTypeName members $ fromMaybe [] required
     { "type": type' } -> compatibleType type'
 
 recordArray :: ServiceShapeName -> String
@@ -125,14 +123,14 @@ recordFields serviceName newTypeName keyValue required = fields
     where field key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
               # replace (Pattern "{{name}}") (Replacement key)
               # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
-              # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "NullOrUndefined")
+              # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "Maybe")
               # replace (Pattern "  ") (Replacement " ")
 
           fields = filterKeysNotCycledInDeclaration serviceName newTypeName keyValue # toArrayWithKey field
 
 defaultConstructor :: MetadataElement -> String -> ServiceShape -> String
 defaultConstructor metadata newTypeName (ServiceShape serviceShape) = case serviceShape of
-    { "type": "structure", members: NullOrUndefined (Just members), required: NullOrUndefined required } -> defaultRecordConstructor metadata newTypeName members $ fromMaybe [] required
+    { "type": "structure", members: Just members, required: required } -> defaultRecordConstructor metadata newTypeName members $ fromMaybe [] required
     _ -> ""
 
 defaultRecordConstructor :: MetadataElement -> String -> StrMap ServiceShapeName -> Array String -> String
@@ -158,7 +156,7 @@ new{{name}}' {{arguments}} customize = ({{name}} <<< customize) { {{fieldAssignm
               arguments = (escapeArgument <<< fst) <$> requiredFields # joinWith " "
               fieldAssignments = (requiredFieldAssignments <> optionalFieldAssignments) # joinWith ", "
               requiredFieldAssignments = (\f -> escapeFieldName f <> ": " <> escapeArgument f) <$> fst <$> requiredFields
-              optionalFieldAssignments = (\f -> escapeFieldName f <> ": (NullOrUndefined Nothing)") <$> fst <$> optionalFields
+              optionalFieldAssignments = (\f -> escapeFieldName f <> ": Nothing") <$> fst <$> optionalFields
               filteredFields = filterKeysNotCycledInDeclaration serviceName newTypeName keyValue
               signatureTypes = (compatibleType <<< (\(ServiceShapeName{shape}) -> shape) <<< snd) <$> requiredFields
               requiredFields = splitFields.yes

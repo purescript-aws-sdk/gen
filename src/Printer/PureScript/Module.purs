@@ -1,7 +1,6 @@
 module Printer.PureScript.Module where
 
 import Prelude
-import Data.Foreign.NullOrUndefined (unNullOrUndefined)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), replace, replaceAll)
 
@@ -27,7 +26,7 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 
 import AWS.Service (Options, Service, ServiceName(..), service) as AWS
 """ # replace (Pattern "{{name}}") (Replacement name)
-    # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment $ unNullOrUndefined documentation)
+    # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment documentation)
 
 
 service :: MetadataElement -> String

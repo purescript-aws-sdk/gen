@@ -1,7 +1,6 @@
 module Printer.PureScript.Requests where
 
 import Prelude
-import Data.Foreign.NullOrUndefined (unNullOrUndefined)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, joinWith, replace, replaceAll, take, toLower)
 import Data.StrMap (toArrayWithKey)
@@ -46,7 +45,7 @@ function (MetadataElement {name: serviceName}) methodName (ServiceOperation serv
     # replace (Pattern "{{documentation}}") (Replacement documentation)
         where
             camelCaseMethodName = (take 1 methodName # toLower) <> (drop 1 methodName)
-            inputType = unNullOrUndefined serviceOperation.input # maybe "" (\(ServiceShapeName { shape }) -> serviceName <> "Types." <> shape <> " ->")
-            inputFallback = unNullOrUndefined serviceOperation.input # maybe "(Types.NoInput unit)" (\_ -> "")
-            outputType =  unNullOrUndefined serviceOperation.output # maybe "Types.NoOutput" (\(ServiceShapeName { shape }) -> serviceName <> "Types." <> shape)
-            documentation = unNullOrUndefined serviceOperation.documentation # maybe "" comment
+            inputType = serviceOperation.input # maybe "" (\(ServiceShapeName { shape }) -> serviceName <> "Types." <> shape <> " ->")
+            inputFallback = serviceOperation.input # maybe "unit" (\_ -> "")
+            outputType =  serviceOperation.output # maybe "Unit" (\(ServiceShapeName { shape }) -> serviceName <> "Types." <> shape)
+            documentation = serviceOperation.documentation # maybe "" comment
