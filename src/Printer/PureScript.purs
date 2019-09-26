@@ -1,12 +1,12 @@
 module Printer.PureScript where
 
 import Prelude (Unit, bind, map, pure, unit, (#), ($), (<>))
-import Control.Monad.Aff (Aff, apathize)
 import Data.String (Pattern(Pattern), Replacement(Replacement), replace, replaceAll, toLower)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
+import Effect.Aff (Aff, apathize)
 import Node.Encoding (Encoding(..))
-import Node.FS.Aff (FS, readTextFile, writeTextFile)
+import Node.FS.Aff (readTextFile, writeTextFile)
 import Node.Path (FilePath, concat)
 
 import AWS (MetadataElement(MetadataElement))
@@ -18,9 +18,9 @@ projectPath :: FilePath -> MetadataElement -> FilePath
 projectPath path (MetadataElement { name }) = concat [path, "purescript-aws-" <> (toLower name)]
 
 filePath :: FilePath -> MetadataElement -> String -> FilePath
-filePath path (metadata@MetadataElement { name }) fileName = concat [projectPath path metadata, "src", fileName <> ".purs"]
+filePath path metadata@(MetadataElement { name }) fileName = concat [projectPath path metadata, "src", fileName <> ".purs"]
 
-project :: forall eff. FilePath -> MetadataElement -> Aff(fs :: FS | eff) Unit
+project :: FilePath -> MetadataElement -> Aff Unit
 project path metadata  = do
     let projectPath' = projectPath path metadata
 

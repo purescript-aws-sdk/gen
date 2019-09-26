@@ -3,7 +3,7 @@ module Printer.PureScript.Requests where
 import Prelude
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, joinWith, replace, replaceAll, take, toLower)
-import Data.StrMap (toArrayWithKey)
+import Foreign.Object (toArrayWithKey)
 
 import AWS (MetadataElement(MetadataElement), Service(Service), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
 import Printer.PureScript.Comment (comment)

@@ -1,15 +1,17 @@
 module Eff where
 
 import Prelude
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (EXCEPTION, error, throwException)
+
+import Effect (Effect)
+import Effect.Exception (error, throwException)
 import Control.Monad.Except (Except, runExcept)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.Foreign (MultipleErrors, renderForeignError)
 import Data.Maybe (Maybe(..))
+import Foreign (MultipleErrors, renderForeignError)
 
-liftExcept :: forall eff a. Except MultipleErrors a -> Eff(exception :: EXCEPTION | eff) a
+
+liftExcept :: forall a. Except MultipleErrors a -> Effect a
 liftExcept except = case (runExcept except) of
     Right good -> pure good
     Left bads -> map renderForeignError bads
@@ -17,10 +19,10 @@ liftExcept except = case (runExcept except) of
       # error
       # throwException
 
-liftEither :: forall eff a. Either String a -> Eff(exception :: EXCEPTION | eff) a
+liftEither :: forall a. Either String a -> Effect a
 liftEither (Right good) = pure good
 liftEither (Left bad) = throwException $ error bad
 
-liftMaybe :: forall eff a. Maybe a -> Eff(exception :: EXCEPTION | eff) a
+liftMaybe :: forall a. Maybe a -> Effect a
 liftMaybe (Just good) = pure good
 liftMaybe Nothing = throwException $ error "No such element"

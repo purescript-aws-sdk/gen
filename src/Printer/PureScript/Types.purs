@@ -4,8 +4,9 @@ import Prelude
 import Data.Array (elem, partition)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String (Pattern(Pattern), Replacement(..), drop, dropWhile, joinWith, replace, replaceAll, take, toUpper)
-import Data.StrMap (StrMap, filterKeys, isEmpty, toArrayWithKey, toAscUnfoldable)
+import Data.String.CodePoints (codePointFromChar)
 import Data.Tuple (fst, snd)
+import Foreign.Object (Object, filterKeys, isEmpty, toArrayWithKey, toAscUnfoldable)
 
 import AWS (MetadataElement(MetadataElement), Service(Service), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
 import Printer.CycledInDeclaration (ServiceName(..), NewTypeName(..), AttributeName(..), notElem)
@@ -51,7 +52,7 @@ purescriptTypes =
 compatibleType :: String -> String
 compatibleType type' = safeType
     where
-        typeNoPrefix = dropWhile (_ == '_') type'
+        typeNoPrefix = dropWhile (_ == codePointFromChar '_') type'
         typePascalCase = (take 1 typeNoPrefix # toUpper) <> (drop 1 typeNoPrefix)
         typeNotJs = case typePascalCase of
             "Blob" -> "String"
@@ -111,14 +112,14 @@ recordMap :: ServiceShapeName -> String
 recordMap (ServiceShapeName value) = "(StrMap.StrMap {{value}})"
     # replace (Pattern "{{value}}") (Replacement $ compatibleType value.shape)
 
-recordRecord :: MetadataElement -> String -> StrMap ServiceShapeName -> Array String -> String
+recordRecord :: MetadataElement -> String -> Object ServiceShapeName -> Array String -> String
 recordRecord (MetadataElement { name: serviceName }) newTypeName keyValue required = if isEmpty keyValue
     then "Types.NoArguments"
     else "\n  { {{fields}}\n  }"
         # replace (Pattern "{{fields}}") (Replacement fields)
             where fields = recordFields serviceName newTypeName keyValue required # joinWith "\n  , "
 
-recordFields :: String -> String -> StrMap ServiceShapeName -> Array String -> Array String
+recordFields :: String -> String -> Object ServiceShapeName -> Array String -> Array String
 recordFields serviceName newTypeName keyValue required = fields
     where field key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
               # replace (Pattern "{{name}}") (Replacement key)
@@ -133,7 +134,7 @@ defaultConstructor metadata newTypeName (ServiceShape serviceShape) = case servi
     { "type": "structure", members: Just members, required: required } -> defaultRecordConstructor metadata newTypeName members $ fromMaybe [] required
     _ -> ""
 
-defaultRecordConstructor :: MetadataElement -> String -> StrMap ServiceShapeName -> Array String -> String
+defaultRecordConstructor :: MetadataElement -> String -> Object ServiceShapeName -> Array String -> String
 defaultRecordConstructor (MetadataElement { name: serviceName }) newTypeName keyValue required = if isEmpty keyValue
     then "" -- there's already a singleton constructor
     else """
@@ -165,7 +166,7 @@ new{{name}}' {{arguments}} customize = ({{name}} <<< customize) { {{fieldAssignm
               escapeFieldName n = "\"" <> n <> "\""
               escapeArgument n = "_" <> n
 
-filterKeysNotCycledInDeclaration :: String -> String -> StrMap ServiceShapeName -> StrMap ServiceShapeName
+filterKeysNotCycledInDeclaration :: String -> String -> Object ServiceShapeName -> Object ServiceShapeName
 filterKeysNotCycledInDeclaration serviceName newTypeName kvs = filterKeys notCycledInDeclaration kvs
     where notCycledInDeclaration attributeName = notElem
               (ServiceName serviceName)
