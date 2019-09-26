@@ -30,13 +30,15 @@ build:
         name: build
         code: |
           echo Building project...
-          make clean init build run init-all
+          # Skip init-all first until templated project is upgraded to purescript 0.13
+          make clean init build run # init-all
 
     - script:
         name: test
         code: |
           echo Testing project...
-#          make test-all
+          # Skip test-all first until templated project is upgraded to purescript 0.13
+          # make test-all
 
     - script:
         name: deploy
