@@ -7,12 +7,13 @@
     "output"
   ],
   "dependencies": {
-    "purescript-prelude": "^3.3.0",
-    "purescript-console": "^3.0.0",
-    "purescript-node-fs-aff": "^5.0.0",
-    "purescript-foreign-generic": "^6.0.0"
+    "purescript-prelude": "^4.1.1",
+    "purescript-console": "^4.2.0",
+    "purescript-aff": "^5.1.2",
+    "purescript-node-fs-aff": "^6.0.0",
+    "purescript-foreign-generic": "^10.0.0"
   },
   "devDependencies": {
-    "purescript-psci-support": "^3.0.0"
+    "purescript-psci-support": "^4.0.0"
   }
 }

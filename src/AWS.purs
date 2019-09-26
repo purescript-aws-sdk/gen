@@ -2,19 +2,18 @@ module AWS where
 
 import Prelude
 import Data.Either (Either)
-import Data.Foreign.Class (class Decode, class Encode)
-import Data.Foreign.Generic (defaultOptions, genericDecode, genericEncode)
-import Data.Foreign.Generic.Types (Options)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
-import Data.StrMap (StrMap)
 import Data.String.Regex (Regex, regex)
 import Data.String.Regex.Flags (ignoreCase)
+import Foreign.Class (class Decode, class Encode)
+import Foreign.Generic (Options, defaultOptions, genericDecode, genericEncode)
+import Foreign.Object (Object)
 
 options :: Options
 options = defaultOptions { unwrapSingleConstructors = true }
 
-newtype Metadata = Metadata (StrMap MetadataElement)
+newtype Metadata = Metadata (Object MetadataElement)
 
 derive instance repGenericMetadata :: Generic Metadata _
 instance decodeMetadata :: Decode Metadata where decode = genericDecode options
@@ -35,8 +34,8 @@ metadataFileRegex (MetadataElement element) = pattern where
   pattern = regex (prefix <> "-[0-9]{4}-[0-9]{2}-[0-9]{2}.normal.json") ignoreCase
 
 newtype Service = Service
-  { shapes :: StrMap ServiceShape
-  , operations :: StrMap ServiceOperation
+  { shapes :: Object ServiceShape
+  , operations :: Object ServiceOperation
   , metadata :: ServiceMetadata
   , documentation :: Maybe String
   , version :: Maybe String
@@ -88,7 +87,7 @@ instance encodeServiceOperation :: Encode ServiceOperation where encode = generi
 
 newtype ServiceShape = ServiceShape
   { type :: String
-  , members ::  Maybe (StrMap ServiceShapeName)
+  , members ::  Maybe (Object ServiceShapeName)
   , documentation :: Maybe String
   , required :: Maybe (Array String)
   , member :: Maybe ServiceShapeName

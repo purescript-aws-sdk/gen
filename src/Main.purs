@@ -1,20 +1,20 @@
 module Main where
 
 import Prelude
-import Control.Monad.Aff (Aff, Fiber, apathize, launchAff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (EXCEPTION)
+
 import Data.Either (Either)
-import Data.Foreign.Generic (decodeJSON)
 import Data.Maybe (Maybe)
 import Data.String.Regex (Regex, test)
-import Data.StrMap (values)
 import Data.Traversable (find, traverse)
 import Data.Tuple (Tuple(..))
+import Effect (Effect)
+import Effect.Aff (Aff, Fiber, apathize, launchAff)
+import Effect.Class (liftEffect)
+import Effect.Console (log)
+import Foreign.Generic (decodeJSON)
+import Foreign.Object (values)
 import Node.Encoding (Encoding(..))
-import Node.FS.Aff (FS, readTextFile, readdir, writeTextFile)
+import Node.FS.Aff (readTextFile, readdir, writeTextFile)
 import Node.Path (FilePath, concat, dirname)
 
 import AWS (Metadata(Metadata), MetadataElement, Service, metadataFileRegex)
@@ -41,16 +41,16 @@ metadataWithApiFileName fileNames (Tuple metadata pattern) = find (test pattern)
 metadataWithApiFilePath :: FilePath -> Tuple MetadataElement FilePath -> Tuple MetadataElement FilePath
 metadataWithApiFilePath path (Tuple metadata fileName) = Tuple metadata (concat [path, fileName])
 
-metadataWithService :: forall eff. Tuple MetadataElement String -> Aff (exception :: EXCEPTION, fs :: FS | eff) (Tuple MetadataElement Service)
+metadataWithService :: Tuple MetadataElement String -> Aff (Tuple MetadataElement Service)
 metadataWithService (Tuple metadata filePath) = do
   jsonString <- readTextFile UTF8 filePath
-  service <- decodeJSON jsonString # liftExcept # liftEff
+  service <- decodeJSON jsonString # liftExcept # liftEffect
   pure $ Tuple metadata service
 
-createClientProject :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (fs :: FS | eff) Unit
+createClientProject :: FilePath -> Tuple MetadataElement Service -> Aff Unit
 createClientProject path (Tuple metadata _) = project path metadata
 
-createClientFiles :: forall eff. FilePath -> Tuple MetadataElement Service -> Aff (exception :: EXCEPTION, fs :: FS | eff) Unit
+createClientFiles :: FilePath -> Tuple MetadataElement Service -> Aff Unit
 createClientFiles path (Tuple metadata service) = do
   let filePath' = filePath path metadata
   _ <- apathize $ mkdirRecursive $ dirname $ filePath' ""
@@ -67,22 +67,22 @@ createClientFiles path (Tuple metadata service) = do
   let typesContent = TypesPrinter.output metadata service
   writeTextFile UTF8 typesFilePath typesContent
 
-main :: forall eff. Eff (fs :: FS, exception :: EXCEPTION, console :: CONSOLE | eff) (Fiber (fs :: FS, exception :: EXCEPTION , console :: CONSOLE | eff) Unit)
+main :: Effect (Fiber Unit)
 main = launchAff do
   apiMetadataFileContent <- readTextFile UTF8 apisMetadataFilePath
-  Metadata metadata <- decodeJSON apiMetadataFileContent # liftExcept # liftEff
+  Metadata metadata <- decodeJSON apiMetadataFileContent # liftExcept # liftEffect
   let metadataElements = values metadata
 
   metadataElementsWithApiFileRegex <- map metadataWithApiFileRegex metadataElements
-    # traverse (liftEither >>> liftEff)
+    # traverse (liftEither >>> liftEffect)
 
   apiFileNames <- readdir apisPath
   metadataElementsWithApiFileName <- map (metadataWithApiFileName apiFileNames) metadataElementsWithApiFileRegex
-    # traverse (liftMaybe >>> liftEff)
+    # traverse (liftMaybe >>> liftEffect)
 
   let metadataElementsWithApiFilePaths = map (metadataWithApiFilePath apisPath) metadataElementsWithApiFileName
   metadataElementsWithServices <- traverse metadataWithService metadataElementsWithApiFilePaths
   _ <- traverse (createClientProject clientsPath) metadataElementsWithServices
   _ <- traverse (createClientFiles clientsPath) metadataElementsWithServices
 
-  liftEff $ log "Hello sailor!"
+  liftEffect $ log "Hello sailor!"
