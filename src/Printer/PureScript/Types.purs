@@ -1,27 +1,28 @@
-module Printer.PureScript.Types where
+module Printer.PureScript.Types
+       ( fileName
+       , output
+       ) where
 
 import Prelude
-import Data.Array (elem, partition)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
-import Data.String (Pattern(Pattern), Replacement(..), drop, dropWhile, joinWith, replace, replaceAll, take, toUpper)
-import Data.String.CodePoints (codePointFromChar)
-import Data.Tuple (fst, snd)
-import Foreign.Object (Object, filterKeys, isEmpty, toArrayWithKey, toAscUnfoldable)
 
-import AWS (MetadataElement(MetadataElement), Service(Service), ServiceShape(ServiceShape), ServiceShapeName(ServiceShapeName))
+import Data.Array (elem, null, partition)
+import Data.Array as Array
+import Data.Maybe (maybe)
+import Data.String (Pattern(Pattern), Replacement(..), joinWith, replace, replaceAll)
 import Printer.CycledInDeclaration (ServiceName(..), NewTypeName(..), AttributeName(..), notElem)
 import Printer.PureScript.Comment (comment)
+import Printer.Types (ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember)
 
-fileName :: MetadataElement -> String
-fileName (MetadataElement { name }) = name <> "Types"
+fileName :: ServiceDef -> String
+fileName { name } = name <> "Types"
 
-output :: MetadataElement -> Service -> String
-output metadataElement (Service { shapes }) =
-    (header metadataElement) <>
-    (toArrayWithKey (\name -> \serviceShape -> newType metadataElement name serviceShape) shapes # joinWith "")
+output :: ServiceDef -> String
+output serviceDef =
+    (header serviceDef) <>
+    (serviceDef.shapes <#> newType serviceDef # joinWith "")
 
-header :: MetadataElement -> String
-header (MetadataElement { name }) = """
+header :: ServiceDef -> String
+header { name } = """
 module AWS.{{name}}.Types where
 
 import Prelude
@@ -40,50 +41,8 @@ options :: Options
 options = defaultOptions { unwrapSingleConstructors = true }
 """ # replace (Pattern "{{name}}") (Replacement name)
 
-purescriptTypes :: Array String
-purescriptTypes =
-  [ "Boolean"
-  , "Int"
-  , "Number"
-  , "String"
-  , "Types.Timestamp"
-  ]
-
-compatibleType :: String -> String
-compatibleType type' = safeType
-    where
-        typeNoPrefix = dropWhile (_ == codePointFromChar '_') type'
-        typePascalCase = (take 1 typeNoPrefix # toUpper) <> (drop 1 typeNoPrefix)
-        typeNotJs = case typePascalCase of
-            "Blob" -> "String"
-            "Integer" -> "Int"
-            "Long" -> "Number"
-            "Float" -> "Number"
-            "Double" -> "Number"
-            "Timestamp" -> "Types.Timestamp"
-
-            "Function" -> "Function'"
-            "Map" -> "Map'"
-            "Record" -> "Record'"
-            "Partial" -> "Partial'"
-            "Unit" -> "Unit'"
-
-            validType -> validType
-
-        safeType = if (elem typeNotJs purescriptTypes) || (type' == typeNotJs)
-            then typeNotJs
-            else typeNotJs <> "'"
-
-newType :: MetadataElement -> String -> ServiceShape -> String
-newType metadata name serviceShape = typeDefinition
-    where
-        type' = compatibleType name
-        typeDefinition = if (elem type' purescriptTypes)
-            then ""
-            else newType' metadata type' serviceShape
-
-newType' :: MetadataElement -> String -> ServiceShape -> String
-newType' metadata name serviceShape@(ServiceShape { documentation }) = """
+newType :: ServiceDef -> ShapeDef -> String
+newType svc shape = """
 {{documentation}}
 newtype {{name}} = {{name}} {{type}}
 derive instance newtype{{name}} :: Newtype {{name}} _
@@ -92,50 +51,57 @@ instance show{{name}} :: Show {{name}} where show = genericShow
 instance decode{{name}} :: Decode {{name}} where decode = genericDecode options
 instance encode{{name}} :: Encode {{name}} where encode = genericEncode options
 {{defaultConstructor}}
-""" # replaceAll (Pattern "{{name}}") (Replacement $ name)
-    # replace (Pattern "{{type}}") (Replacement $ recordType metadata name serviceShape)
-    # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment documentation)
-    # replace (Pattern "{{defaultConstructor}}") (Replacement $ defaultConstructor metadata name serviceShape)
+""" # replaceAll (Pattern "{{name}}") (Replacement $ shape.name)
+    # replace (Pattern "{{type}}") (Replacement $ recordType svc shape)
+    # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment shape.documentation)
+    # replace (Pattern "{{defaultConstructor}}") (Replacement $ defaultConstructor svc shape)
 
-recordType :: MetadataElement -> String -> ServiceShape -> String
-recordType metadata newTypeName (ServiceShape serviceShape) = case serviceShape of
-    { "type": "list", member: Just shape } -> recordArray shape
-    { "type": "map", value: Just value } -> recordMap value
-    { "type": "structure", members: Just members, required: required } -> recordRecord metadata newTypeName members $ fromMaybe [] required
-    { "type": type' } -> compatibleType type'
+recordType :: ServiceDef -> ShapeDef -> String
+recordType svc shape = case shape.shapeType of
+    STList { member } -> recordArray member
+    STMap { value } -> recordMap value
+    STStructure { required, members } -> recordRecord svc shape required members
+    STScalar SCBoolean -> "Boolean"
+    STScalar SCString -> "String"
+    STScalar SCInt -> "Int"
+    STScalar SCNumber -> "Number"
+    STScalar SCTimestamp -> "Types.Timestamp"
+    STUnit -> "Unit"
+    STRef type' -> type'
 
-recordArray :: ServiceShapeName -> String
-recordArray (ServiceShapeName { shape }) = "(Array {{type}})"
-    # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
+recordArray :: String -> String
+recordArray shape = "(Array {{type}})"
+    # replace (Pattern "{{type}}") (Replacement shape)
 
-recordMap :: ServiceShapeName -> String
-recordMap (ServiceShapeName value) = "(StrMap.StrMap {{value}})"
-    # replace (Pattern "{{value}}") (Replacement $ compatibleType value.shape)
+recordMap :: String -> String
+recordMap shape = "(StrMap.StrMap {{value}})"
+    # replace (Pattern "{{value}}") (Replacement shape)
 
-recordRecord :: MetadataElement -> String -> Object ServiceShapeName -> Array String -> String
-recordRecord (MetadataElement { name: serviceName }) newTypeName keyValue required = if isEmpty keyValue
+recordRecord :: ServiceDef -> ShapeDef -> Array String -> Array StructureMember -> String
+recordRecord svc shape required members = if null members
     then "Types.NoArguments"
     else "\n  { {{fields}}\n  }"
         # replace (Pattern "{{fields}}") (Replacement fields)
-            where fields = recordFields serviceName newTypeName keyValue required # joinWith "\n  , "
+            where fields = recordFields svc shape members required # joinWith "\n  , "
 
-recordFields :: String -> String -> Object ServiceShapeName -> Array String -> Array String
-recordFields serviceName newTypeName keyValue required = fields
-    where field key (ServiceShapeName { shape }) = "\"{{name}}\" :: {{required}} ({{type}})"
-              # replace (Pattern "{{name}}") (Replacement key)
-              # replace (Pattern "{{type}}") (Replacement $ compatibleType shape)
-              # replace (Pattern "{{required}}") (Replacement $ if elem key required then "" else "Maybe")
+recordFields :: ServiceDef -> ShapeDef -> Array StructureMember -> Array String -> Array String
+recordFields svc shape members required = fields
+    where field :: StructureMember -> String
+          field { name, shapeName } = "\"{{name}}\" :: {{required}} ({{type}})"
+              # replace (Pattern "{{name}}") (Replacement name)
+              # replace (Pattern "{{type}}") (Replacement shapeName)
+              # replace (Pattern "{{required}}") (Replacement $ if elem name required then "" else "Maybe")
               # replace (Pattern "  ") (Replacement " ")
 
-          fields = filterKeysNotCycledInDeclaration serviceName newTypeName keyValue # toArrayWithKey field
+          fields = filterKeysNotCycledInDeclaration svc shape members <#> field
 
-defaultConstructor :: MetadataElement -> String -> ServiceShape -> String
-defaultConstructor metadata newTypeName (ServiceShape serviceShape) = case serviceShape of
-    { "type": "structure", members: Just members, required: required } -> defaultRecordConstructor metadata newTypeName members $ fromMaybe [] required
+defaultConstructor :: ServiceDef -> ShapeDef -> String
+defaultConstructor svc shape = case shape.shapeType of
+    STStructure { required, members } -> defaultRecordConstructor svc shape members required
     _ -> ""
 
-defaultRecordConstructor :: MetadataElement -> String -> Object ServiceShapeName -> Array String -> String
-defaultRecordConstructor (MetadataElement { name: serviceName }) newTypeName keyValue required = if isEmpty keyValue
+defaultRecordConstructor :: ServiceDef -> ShapeDef -> Array StructureMember -> Array String -> String
+defaultRecordConstructor svc shape members required = if null members
     then "" -- there's already a singleton constructor
     else """
 -- | Constructs {{name}} from required parameters
@@ -146,29 +112,29 @@ new{{name}} {{arguments}} = {{name}} { {{fieldAssignments}} }
 --   This may be useful if you need to immediately overwrite some of the optional values
 new{{name}}' :: {{fieldsSignature}}
 new{{name}}' {{arguments}} customize = ({{name}} <<< customize) { {{fieldAssignments}} }
-""" # replaceAll (Pattern "{{name}}") (Replacement newTypeName)
+""" # replaceAll (Pattern "{{name}}") (Replacement shape.name)
     # replaceAll (Pattern "{{newTypeSignature}}") (Replacement newTypeSignature)
     # replaceAll (Pattern "{{fieldsSignature}}") (Replacement fieldsSignature)
     # replaceAll (Pattern "{{arguments}}") (Replacement arguments)
     # replaceAll (Pattern "{{fieldAssignments}}") (Replacement fieldAssignments)
-        where newTypeSignature = (signatureTypes <> [newTypeName]) # joinWith " -> "
-              fieldsSignature = (signatureTypes <> [ "( { " <> fields <> " } -> {" <> fields <> " } )", newTypeName]) # joinWith " -> "
-              fields = recordFields serviceName newTypeName keyValue required # joinWith " , "
-              arguments = (escapeArgument <<< fst) <$> requiredFields # joinWith " "
+        where newTypeSignature = (signatureTypes <> [shape.name]) # joinWith " -> "
+              fieldsSignature = (signatureTypes <> [ "( { " <> fields <> " } -> {" <> fields <> " } )", shape.name]) # joinWith " -> "
+              fields = recordFields svc shape members required # joinWith " , "
+              arguments = (escapeArgument <<< _.name) <$> requiredFields # joinWith " "
               fieldAssignments = (requiredFieldAssignments <> optionalFieldAssignments) # joinWith ", "
-              requiredFieldAssignments = (\f -> escapeFieldName f <> ": " <> escapeArgument f) <$> fst <$> requiredFields
-              optionalFieldAssignments = (\f -> escapeFieldName f <> ": Nothing") <$> fst <$> optionalFields
-              filteredFields = filterKeysNotCycledInDeclaration serviceName newTypeName keyValue
-              signatureTypes = (compatibleType <<< (\(ServiceShapeName{shape}) -> shape) <<< snd) <$> requiredFields
+              requiredFieldAssignments = (\f -> escapeFieldName f.name <> ": " <> escapeArgument f.name) <$> requiredFields
+              optionalFieldAssignments = (\f -> escapeFieldName f.name <> ": Nothing") <$> optionalFields
+              filteredFields = filterKeysNotCycledInDeclaration svc shape members
+              signatureTypes = (_.shapeName) <$> requiredFields
               requiredFields = splitFields.yes
               optionalFields = splitFields.no
-              splitFields = partition ((flip elem) required <<< fst) (toAscUnfoldable filteredFields)
+              splitFields = partition ((flip elem) required <<< _.name) filteredFields
               escapeFieldName n = "\"" <> n <> "\""
               escapeArgument n = "_" <> n
 
-filterKeysNotCycledInDeclaration :: String -> String -> Object ServiceShapeName -> Object ServiceShapeName
-filterKeysNotCycledInDeclaration serviceName newTypeName kvs = filterKeys notCycledInDeclaration kvs
-    where notCycledInDeclaration attributeName = notElem
-              (ServiceName serviceName)
-              (NewTypeName newTypeName)
-              (AttributeName attributeName)
+filterKeysNotCycledInDeclaration :: ServiceDef -> ShapeDef -> Array StructureMember -> Array StructureMember
+filterKeysNotCycledInDeclaration svc shape names = Array.filter notCycledInDeclaration names
+    where notCycledInDeclaration { shapeName } = notElem
+              (ServiceName svc.name)
+              (NewTypeName shape.name)
+              (AttributeName shapeName)

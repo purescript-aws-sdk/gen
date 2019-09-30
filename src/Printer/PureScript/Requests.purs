@@ -1,23 +1,22 @@
 module Printer.PureScript.Requests where
 
 import Prelude
+
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, joinWith, replace, replaceAll, take, toLower)
-import Foreign.Object (toArrayWithKey)
-
-import AWS (MetadataElement(MetadataElement), Service(Service), ServiceOperation(ServiceOperation), ServiceShapeName(ServiceShapeName))
 import Printer.PureScript.Comment (comment)
+import Printer.Types (ServiceDef, OperationDef)
 
-fileName :: MetadataElement -> String
-fileName (MetadataElement { name }) = name <> "Requests"
+fileName :: ServiceDef -> String
+fileName { name } = name <> "Requests"
 
-output :: MetadataElement -> Service -> String
-output metadataElement (Service { operations }) =
-    (header metadataElement) <>
-    (toArrayWithKey (\name -> \serviceOperation -> function metadataElement name serviceOperation) operations # joinWith "")
+output :: ServiceDef -> String
+output svc@{ operations } =
+    (header svc) <>
+    (operations <#> (function svc) # joinWith "")
 
-header :: MetadataElement -> String
-header (MetadataElement { name }) = """
+header :: ServiceDef -> String
+header { name } = """
 module AWS.{{name}}.Requests where
 
 import Prelude
@@ -31,21 +30,21 @@ import AWS.{{name}} as {{name}}
 import AWS.{{name}}.Types as {{name}}Types
 """ # replaceAll (Pattern "{{name}}") (Replacement name)
 
-function :: MetadataElement -> String -> ServiceOperation -> String
-function (MetadataElement {name: serviceName}) methodName (ServiceOperation serviceOperation) = """
+function :: ServiceDef -> OperationDef -> String
+function svc { methodName, input, output: output', documentation } = """
 {{documentation}}
 {{camelCaseMethodName}} :: forall eff. {{serviceName}}.Service -> {{inputType}} Aff (exception :: EXCEPTION | eff) {{outputType}}
 {{camelCaseMethodName}} ({{serviceName}}.Service serviceImpl) = AWS.request serviceImpl method {{inputFallback}} where
     method = AWS.MethodName "{{camelCaseMethodName}}"
-""" # replaceAll (Pattern "{{serviceName}}") (Replacement serviceName)
+""" # replaceAll (Pattern "{{serviceName}}") (Replacement svc.name )
     # replaceAll (Pattern "{{camelCaseMethodName}}") (Replacement camelCaseMethodName)
     # replace (Pattern "{{inputType}}") (Replacement inputType)
     # replace (Pattern "{{inputFallback}}") (Replacement inputFallback)
     # replace (Pattern "{{outputType}}") (Replacement outputType)
-    # replace (Pattern "{{documentation}}") (Replacement documentation)
+    # replace (Pattern "{{documentation}}") (Replacement documentation')
         where
             camelCaseMethodName = (take 1 methodName # toLower) <> (drop 1 methodName)
-            inputType = serviceOperation.input # maybe "" (\(ServiceShapeName { shape }) -> serviceName <> "Types." <> shape <> " ->")
-            inputFallback = serviceOperation.input # maybe "unit" (\_ -> "")
-            outputType =  serviceOperation.output # maybe "Unit" (\(ServiceShapeName { shape }) -> serviceName <> "Types." <> shape)
-            documentation = serviceOperation.documentation # maybe "" comment
+            inputType = input # maybe "" (\shape -> svc.name <> "Types." <> shape <> " ->")
+            inputFallback = input # maybe "unit" (\_ -> "")
+            outputType =  output' # maybe "Unit" (\shape -> svc.name <> "Types." <> shape)
+            documentation' = documentation # maybe "" comment
