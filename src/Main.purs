@@ -2,87 +2,89 @@ module Main where
 
 import Prelude
 
-import Data.Either (Either)
-import Data.Maybe (Maybe)
-import Data.String.Regex (Regex, test)
-import Data.Traversable (find, traverse)
-import Data.Tuple (Tuple(..))
+import AWS (Metadata(Metadata), MetadataElement(..), metadataFileRegex)
+import Control.Monad.Error.Class (throwError)
+import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
+import Data.String.Regex (test)
+import Data.Traversable (find, traverse_)
+import Eff (liftExcept)
 import Effect (Effect)
-import Effect.Aff (Aff, Fiber, apathize, launchAff)
+import Effect.Aff (Aff, apathize, error, launchAff_)
 import Effect.Class (liftEffect)
-import Effect.Console (log)
+import Effect.Class.Console (log)
+import FS (mkdirRecursive)
 import Foreign.Generic (decodeJSON)
 import Foreign.Object (values)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile, readdir, writeTextFile)
-import Node.Path (FilePath, concat, dirname)
-
-import AWS (Metadata(Metadata), MetadataElement, Service, metadataFileRegex)
-import Eff (liftEither, liftExcept, liftMaybe)
+import Node.Path (FilePath, dirname)
+import Node.Path as Path
 import Printer.PureScript (filePath, project)
 import Printer.PureScript.Module as ModulePrinter
 import Printer.PureScript.Requests as RequestsPrinter
 import Printer.PureScript.Types as TypesPrinter
-import FS (mkdirRecursive)
+import Printer.ServiceReader (readService)
+import Printer.Types (ServiceDef)
 
 apisMetadataFilePath = "./aws-sdk-js/apis/metadata.json" :: FilePath
 apisPath = "./aws-sdk-js/apis/" :: FilePath
 
 clientsPath = "aws-sdk-purs" :: FilePath
 
-metadataWithApiFileRegex :: MetadataElement -> Either String (Tuple MetadataElement Regex)
-metadataWithApiFileRegex metadata = metadataFileRegex metadata
-  # map (\pattern -> Tuple metadata pattern)
+createClientProject :: FilePath -> ServiceDef -> Aff Unit
+createClientProject path svc = project path svc
 
-metadataWithApiFileName :: Array FilePath -> Tuple MetadataElement Regex -> Maybe (Tuple MetadataElement FilePath)
-metadataWithApiFileName fileNames (Tuple metadata pattern) = find (test pattern) fileNames
-  # map (\fileName -> Tuple metadata fileName)
-
-metadataWithApiFilePath :: FilePath -> Tuple MetadataElement FilePath -> Tuple MetadataElement FilePath
-metadataWithApiFilePath path (Tuple metadata fileName) = Tuple metadata (concat [path, fileName])
-
-metadataWithService :: Tuple MetadataElement String -> Aff (Tuple MetadataElement Service)
-metadataWithService (Tuple metadata filePath) = do
-  jsonString <- readTextFile UTF8 filePath
-  service <- decodeJSON jsonString # liftExcept # liftEffect
-  pure $ Tuple metadata service
-
-createClientProject :: FilePath -> Tuple MetadataElement Service -> Aff Unit
-createClientProject path (Tuple metadata _) = project path metadata
-
-createClientFiles :: FilePath -> Tuple MetadataElement Service -> Aff Unit
-createClientFiles path (Tuple metadata service) = do
-  let filePath' = filePath path metadata
+createClientFiles :: FilePath -> ServiceDef -> Aff Unit
+createClientFiles path svc = do
+  let filePath' = filePath path svc
   _ <- apathize $ mkdirRecursive $ dirname $ filePath' ""
 
-  let moduleFilePath = filePath' $ ModulePrinter.fileName metadata
-  let moduleContent = ModulePrinter.output metadata service
+  let moduleFilePath = filePath' $ ModulePrinter.fileName svc
+  let moduleContent = ModulePrinter.output svc
   _ <- writeTextFile UTF8 moduleFilePath moduleContent
 
-  let requestsFilePath = filePath' $ RequestsPrinter.fileName metadata
-  let requestsContent = RequestsPrinter.output metadata service
+  let requestsFilePath = filePath' $ RequestsPrinter.fileName svc
+  let requestsContent = RequestsPrinter.output svc
   _ <- writeTextFile UTF8 requestsFilePath requestsContent
 
-  let typesFilePath = filePath' $ TypesPrinter.fileName metadata
-  let typesContent = TypesPrinter.output metadata service
+  let typesFilePath = filePath' $ TypesPrinter.fileName svc
+  let typesContent = TypesPrinter.output svc
   writeTextFile UTF8 typesFilePath typesContent
 
-main :: Effect (Fiber Unit)
-main = launchAff do
+runProject :: Array FilePath -> FilePath -> MetadataElement -> Aff Unit
+runProject apiFileNames clientsProject metadataElement = do
+  log $ "Creating project - " <> name
+  fileNameRegex <- mkApiFileNameRegex -- can be simplified later on not to use regex
+  fileName <- findFileName fileNameRegex
+  awsService <- readAwsService $ Path.concat [ apisPath, fileName ]
+  serviceDef <- readServiceDef awsService
+  createClientProject clientsPath serviceDef
+  createClientFiles clientsPath serviceDef
+  where
+    name = case metadataElement of
+      (MetadataElement { name: name' }) -> name'
+
+    mkApiFileNameRegex = case metadataFileRegex metadataElement of
+      Right r -> pure r
+      Left l -> throwError (error "Unable to form regex")
+
+    findFileName pattern = case find (test pattern) apiFileNames of
+      Just r -> pure r
+      Nothing -> throwError (error $ "Unable to find file of pattern: " <> show pattern)
+
+    readAwsService filePath = do
+      jsonString <- readTextFile UTF8 filePath
+      decodeJSON jsonString # liftExcept # liftEffect
+
+    readServiceDef awsService = pure $ readService metadataElement awsService
+
+main :: Effect Unit
+main = launchAff_ do
   apiMetadataFileContent <- readTextFile UTF8 apisMetadataFilePath
   Metadata metadata <- decodeJSON apiMetadataFileContent # liftExcept # liftEffect
   let metadataElements = values metadata
-
-  metadataElementsWithApiFileRegex <- map metadataWithApiFileRegex metadataElements
-    # traverse (liftEither >>> liftEffect)
-
   apiFileNames <- readdir apisPath
-  metadataElementsWithApiFileName <- map (metadataWithApiFileName apiFileNames) metadataElementsWithApiFileRegex
-    # traverse (liftMaybe >>> liftEffect)
 
-  let metadataElementsWithApiFilePaths = map (metadataWithApiFilePath apisPath) metadataElementsWithApiFileName
-  metadataElementsWithServices <- traverse metadataWithService metadataElementsWithApiFilePaths
-  _ <- traverse (createClientProject clientsPath) metadataElementsWithServices
-  _ <- traverse (createClientFiles clientsPath) metadataElementsWithServices
-
-  liftEffect $ log "Hello sailor!"
+  traverse_ (runProject apiFileNames clientsPath) metadataElements
+  liftEffect $ log "Done!"

@@ -1,22 +1,21 @@
 module Printer.PureScript.Module where
 
 import Prelude
+
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), replace, replaceAll)
-
-import AWS (MetadataElement(MetadataElement), Service(Service))
 import Printer.PureScript.Comment (comment)
+import Printer.Types (ServiceDef)
 
-fileName :: MetadataElement -> String
-fileName (MetadataElement { name }) = name
+fileName :: ServiceDef -> String
+fileName svc = svc.name
 
-output :: MetadataElement -> Service -> String
-output metadataElement service' =
-    (header metadataElement service') <>
-    (service metadataElement)
+output :: ServiceDef -> String
+output svc =
+    (header svc) <> (service svc)
 
-header :: MetadataElement -> Service -> String
-header (MetadataElement { name }) (Service { documentation }) = """
+header :: ServiceDef -> String
+header { name, documentation } = """
 {{documentation}}
 module AWS.{{name}} where
 
@@ -29,8 +28,8 @@ import AWS.Service (Options, Service, ServiceName(..), service) as AWS
     # replace (Pattern "{{documentation}}") (Replacement $ maybe "" comment documentation)
 
 
-service :: MetadataElement -> String
-service (MetadataElement { name }) = """
+service :: ServiceDef -> String
+service { name } = """
 newtype Service = Service AWS.Service
 
 service :: forall eff. AWS.Options -> Eff (exception :: EXCEPTION | eff) Service
