@@ -10,6 +10,8 @@ module Printer.Types
 
 import Prelude
 
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe)
 
 type ServiceDef =
@@ -36,6 +38,9 @@ data ShapeType =
   | STUnit
 derive instance eqShapeType :: Eq ShapeType
 derive instance ordShapeType :: Ord ShapeType
+derive instance genShapeType :: Generic ShapeType _
+instance showShapeType :: Show ShapeType where
+  show = genericShow
 
 data ScalarType =
   SCString
@@ -45,6 +50,9 @@ data ScalarType =
   | SCTimestamp
 derive instance eqScalarType :: Eq ScalarType
 derive instance ordScalarType :: Ord ScalarType
+derive instance genScalarType :: Generic ScalarType _
+instance showScalarType :: Show ScalarType where
+  show = genericShow
 
 type StructureMember =
   { name :: String
