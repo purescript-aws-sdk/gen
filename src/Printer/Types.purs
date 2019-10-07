@@ -67,3 +67,7 @@ type OperationDef =
   }
 
 data ReadError
+
+derive instance genReadError :: Generic ReadError _
+instance showReadError :: Show ReadError where
+  show = genericShow

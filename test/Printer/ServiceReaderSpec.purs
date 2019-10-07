@@ -5,13 +5,18 @@ module Printer.ServiceReaderSpec
 import Prelude
 
 import AWS as AWS
+import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Control.Monad.Trans.Class (lift)
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Effect.Aff (throwError)
+import Effect.Exception (Error, error)
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Printer.ServiceReader (readService)
 import Printer.Types (ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), OperationDef)
-import Test.Spec (Spec, describe, it)
-import Test.Spec.Assertions (shouldEqual)
+import Test.Spec (Spec, describe, it, pending)
+import Test.Spec.Assertions (fail, shouldEqual)
 import Type.Row.Homogeneous (class Homogeneous)
 
 type AService =
@@ -68,24 +73,26 @@ serviceReaderSpec :: Spec Unit
 serviceReaderSpec = do
   describe "Service Reader" do
     it "should copy the service's name" do
-      (r identity).name `shouldEqual` "Foo"
+      s <- r' identity
+      s.name `shouldEqual` "Foo"
 
     it "should copy the service's documentation" do
-      (r _ { documentation = Just "foodoc" }).documentation
-        `shouldEqual` (Just "foodoc")
+      s <- r' _ { documentation = Just "foodoc" }
+      s.documentation `shouldEqual` (Just "foodoc")
 
     it "should read scalar shapes" do
       -- sort this by name
       -- to get the same order in the
       -- result
-      rshapes { "MyBlob": shape_ "blob"
-              , "MyBoolean": shape_ "boolean"
-              , "MyDouble": shape_ "double"
-              , "MyFloat": shape_ "float"
-              , "MyInteger": shape_ "integer"
-              , "MyLong": shape_ "long"
-              , "MyTimestamp": shape_ "timestamp"
-              } `shouldEqual`
+      s <- r { "MyBlob": shape_ "blob"
+             , "MyBoolean": shape_ "boolean"
+             , "MyDouble": shape_ "double"
+             , "MyFloat": shape_ "float"
+             , "MyInteger": shape_ "integer"
+             , "MyLong": shape_ "long"
+             , "MyTimestamp": shape_ "timestamp"
+             } {}
+      s.shapes `shouldEqual`
         [ shapeDef "MyBlob" $ STScalar SCString
         , shapeDef "MyBoolean" $ STScalar SCBoolean
         , shapeDef "MyDouble" $ STScalar SCNumber
@@ -96,19 +103,21 @@ serviceReaderSpec = do
         ]
 
     it "should read a list shape" do
-      rshapes { "MyList": shape "list" _ { member = jsname "MyInteger" }
-              } `shouldEqual`
+      s <- r { "MyList": shape "list" _ { member = jsname "MyInteger" }
+             } {}
+      s.shapes `shouldEqual`
         [ shapeDef "MyList" $ STList { member: "MyInteger" }
         ]
 
     it "should read a map shape" do
-      rshapes { "MyMap": shape "map" _ { value = jsname "MyInteger" }
-              } `shouldEqual`
+      s <- r { "MyMap": shape "map" _ { value = jsname "MyInteger" }
+             } {}
+      s.shapes `shouldEqual`
         [ shapeDef "MyMap" $ STMap { value: "MyInteger" }
         ]
 
     it "should read a structure shape" do
-      rshapes { "MyStructure": shape "structure" _
+      s <- r { "MyStructure": shape "structure" _
                 { required = Just [ "A", "B" ]
                 , members = Just $ Object.fromHomogeneous
                   { "A": sname "SA"
@@ -116,7 +125,8 @@ serviceReaderSpec = do
                   , "C": sname "SC"
                   }
                 }
-              } `shouldEqual`
+             } {}
+      s.shapes `shouldEqual`
         [ shapeDef "MyStructure" $ STStructure
           { required: [ "A", "B" ]
           , members:
@@ -128,25 +138,35 @@ serviceReaderSpec = do
         ]
 
     it "should read operations with input and output" do
-      roperations { "Op1": operation "Op1" _ { input = jsname "Op1Input"
-                                             , output = jsname "Op1Output"
-                                             }
-                  , "Op2": operation "Op2" _ { input = Nothing
-                                             , output = Nothing
-                                             }
-                  } `shouldEqual`
+      s <- r {} { "Op1": operation "Op1" _ { input = jsname "Op1Input"
+                                           , output = jsname "Op1Output"
+                                           }
+                , "Op2": operation "Op2" _ { input = Nothing
+                                           , output = Nothing
+                                           }
+                }
+      s.operations `shouldEqual`
         [ operationDef "Op1" (Just "Op1Input") (Just "Op1Output")
         , operationDef "Op2" Nothing Nothing
         ]
 
-r :: (AService -> AService) -> ServiceDef
-r f = readService meta (svc f)
+r' :: forall m. MonadThrow Error m => (AService -> AService) -> m ServiceDef
+r' f = case readService meta (svc f) of
+  Left l -> throwError <<< error $ "unable to build service def"
+  Right s -> pure s
 
-rshapes :: forall r. Homogeneous r AWS.ServiceShape => { |r } -> Array ShapeDef
-rshapes shapes' = (r _ { shapes = Object.fromHomogeneous shapes'}).shapes
-
-roperations :: forall r. Homogeneous r AWS.ServiceOperation => { |r } -> Array OperationDef
-roperations ops' = (r _ { operations = Object.fromHomogeneous ops' }).operations
+r
+  :: forall m r1 r2
+     . MonadThrow Error m
+     => Homogeneous r1 AWS.ServiceShape
+     => Homogeneous r2 AWS.ServiceOperation
+     => { |r1 }
+     -> { |r2 }
+     -> m ServiceDef
+r shapes' operations' =
+  r' _ { shapes = Object.fromHomogeneous shapes'
+       , operations = Object.fromHomogeneous operations'
+       }
 
 -- Creators
 

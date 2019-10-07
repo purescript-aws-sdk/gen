@@ -77,7 +77,11 @@ runProject apiFileNames clientsProject metadataElement = do
       jsonString <- readTextFile UTF8 filePath
       decodeJSON jsonString # liftExcept # liftEffect
 
-    readServiceDef awsService = pure $ readService metadataElement awsService
+    readServiceDef awsService =
+      let s = readService metadataElement awsService
+      in case s of
+        Right r -> pure r
+        Left l -> throwError $ error $ "Invalid metadata - " <> show l
 
 main :: Effect Unit
 main = launchAff_ do
