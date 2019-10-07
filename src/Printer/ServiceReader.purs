@@ -7,23 +7,24 @@ import Prelude
 import AWS (ServiceShapeName(..))
 import AWS as AWS
 import Data.Array as Array
+import Data.Either (Either)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String as String
 import Foreign.Object as Object
-import Printer.Types (ScalarType(..), ServiceDef, ShapeType(..))
+import Printer.Types (ReadError, ScalarType(..), ServiceDef, ShapeType(..))
 
-readService :: AWS.MetadataElement -> AWS.Service -> ServiceDef
+readService :: AWS.MetadataElement -> AWS.Service -> Either ReadError ServiceDef
 readService (AWS.MetadataElement meta) (AWS.Service svc) =
-  { name: meta.name
-  , documentation: svc.documentation
-    -- TODO nubbing gets rid of duplicates caused by
-    -- cleaning up names (i.e. original name of "boolean" and "Boolean")
-    -- assuming they have the same declaration.
-    -- but we best look for a safer way to guard against duplicate names
-    -- but diff declaration.
-  , shapes: Array.sortWith _.name $ Array.nub $ Object.toArrayWithKey toShape svc.shapes
-  , operations: Array.sortWith _.methodName $ Object.toArrayWithKey toOperation svc.operations
-  }
+  pure { name: meta.name
+       , documentation: svc.documentation
+         -- TODO nubbing gets rid of duplicates caused by
+         -- cleaning up names (i.e. original name of "boolean" and "Boolean")
+         -- assuming they have the same declaration.
+         -- but we best look for a safer way to guard against duplicate names
+         -- but diff declaration.
+       , shapes: Array.sortWith _.name $ Array.nub $ Object.toArrayWithKey toShape svc.shapes
+       , operations: Array.sortWith _.methodName $ Object.toArrayWithKey toOperation svc.operations
+       }
   where
     toShape name ass@(AWS.ServiceShape ss) =
       { name: safeShapeName name
