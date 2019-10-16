@@ -5,18 +5,20 @@ module Printer.ServiceReaderSpec
 import Prelude
 
 import AWS as AWS
-import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Error.Class (class MonadThrow)
+import Data.Array as Array
 import Data.Either (Either(..))
+import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
 import Effect.Aff (throwError)
 import Effect.Exception (Error, error)
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Printer.ServiceReader (readService)
-import Printer.Types (ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), OperationDef)
+import Printer.Types (MemberType(..), OperationDef, ReadError(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..))
 import Test.Spec (Spec, describe, it, pending)
-import Test.Spec.Assertions (fail, shouldEqual)
+import Test.Spec.Assertions (shouldContain, shouldEqual)
 import Type.Row.Homogeneous (class Homogeneous)
 
 type AService =
@@ -80,7 +82,9 @@ serviceReaderSpec = do
       s <- r' _ { documentation = Just "foodoc" }
       s.documentation `shouldEqual` (Just "foodoc")
 
-    it "should read scalar shapes" do
+    -- shapes
+
+    it "should skip non structure shapes" do
       -- sort this by name
       -- to get the same order in the
       -- result
@@ -90,52 +94,155 @@ serviceReaderSpec = do
              , "MyFloat": shape_ "float"
              , "MyInteger": shape_ "integer"
              , "MyLong": shape_ "long"
+             , "MyString": shape_ "string"
              , "MyTimestamp": shape_ "timestamp"
-             } {}
-      s.shapes `shouldEqual`
-        [ shapeDef "MyBlob" $ STScalar SCString
-        , shapeDef "MyBoolean" $ STScalar SCBoolean
-        , shapeDef "MyDouble" $ STScalar SCNumber
-        , shapeDef "MyFloat" $ STScalar SCNumber
-        , shapeDef "MyInteger" $ STScalar SCInt
-        , shapeDef "MyLong" $ STScalar SCNumber
-        , shapeDef "MyTimestamp" $ STScalar SCTimestamp
-        ]
 
-    it "should read a list shape" do
-      s <- r { "MyList": shape "list" _ { member = jsname "MyInteger" }
+             , "MyList": shape "list" _ { member = jsname "integer" }
+             , "MyMap": shape "map" _ { value = jsname "integer" }
              } {}
-      s.shapes `shouldEqual`
-        [ shapeDef "MyList" $ STList { member: "MyInteger" }
-        ]
+      s.shapes `shouldEqual` []
 
-    it "should read a map shape" do
-      s <- r { "MyMap": shape "map" _ { value = jsname "MyInteger" }
-             } {}
-      s.shapes `shouldEqual`
-        [ shapeDef "MyMap" $ STMap { value: "MyInteger" }
-        ]
-
-    it "should read a structure shape" do
+    it "should read a structure of scalars" do
       s <- r { "MyStructure": shape "structure" _
-                { required = Just [ "A", "B" ]
+                { required = Just []
                 , members = Just $ Object.fromHomogeneous
-                  { "A": sname "SA"
-                  , "B": sname "SB"
-                  , "C": sname "SC"
+                  { "Blob": sname "blob"
+                  , "Boolean": sname "boolean"
+                  , "Double": sname "double"
+                  , "Float": sname "float"
+                  , "Integer": sname "integer"
+                  , "Long": sname "long"
+                  , "String": sname "string"
+                  , "Timestamp": sname "timestamp"
                   }
                 }
              } {}
       s.shapes `shouldEqual`
         [ shapeDef "MyStructure" $ STStructure
-          { required: [ "A", "B" ]
-          , members:
-            [ { name: "A", shapeName: "SA" }
-            , { name: "B", shapeName: "SB" }
-            , { name: "C", shapeName: "SC" }
+          { members:
+            [ { name: "Blob", isRequired: false, memberType: MTScalar SCString }
+            , { name: "Boolean", isRequired: false, memberType: MTScalar SCBoolean }
+            , { name: "Double", isRequired: false, memberType: MTScalar SCNumber }
+            , { name: "Float", isRequired: false, memberType: MTScalar SCNumber }
+            , { name: "Integer", isRequired: false, memberType: MTScalar SCInt }
+            , { name: "Long", isRequired: false, memberType: MTScalar SCNumber }
+            , { name: "String", isRequired: false, memberType: MTScalar SCString }
+            , { name: "Timestamp", isRequired: false, memberType: MTScalar SCTimestamp }
             ]
           }
         ]
+
+    it "should trace the references" do
+      s <- r { "MyStructure": shape "structure" _
+                { members = Just $ Object.fromHomogeneous
+                  { "Boolean0": sname "boolean"
+                  , "Boolean1": sname "MyBoolean1"
+                  , "Boolean2": sname "MyBoolean2"
+                  }
+                }
+             , "MyBoolean1": shape_ "boolean"
+             , "MyBoolean2": shape_ "MyBoolean1"
+             } {}
+      s.shapes `shouldEqual`
+        [ shapeDef "MyStructure" $ STStructure
+          { members:
+            [ { name: "Boolean0", isRequired: false, memberType: MTScalar SCBoolean }
+            , { name: "Boolean1", isRequired: false, memberType: MTScalar SCBoolean }
+            , { name: "Boolean2", isRequired: false, memberType: MTScalar SCBoolean }
+            ]
+          }
+        ]
+
+    it "should trace structure refernces" do
+      s <- r { "MyStructure0": shape_ "structure"
+             , "MyStructure1": shape "structure" _
+               { members = Just $ Object.fromHomogeneous
+                 { "A": sname "MyStructure0"
+                 }
+               }
+             } {}
+      s.shapes `shouldEqual`
+        [ shapeDef "MyStructure0" $ STStructure { members: [] }
+        , shapeDef "MyStructure1" $ STStructure
+          { members:
+            [ { name: "A", isRequired: false, memberType: MTRef "MyStructure0" }
+            ]
+          }
+        ]
+
+    it "should track required members" do
+      s <- r { "MyStructure": shape "structure" _
+                { required = Just [ "R" ]
+                , members = Just $ Object.fromHomogeneous
+                  { "R": sname "boolean"
+                  }
+                }
+             } {}
+      let firstMemberReq = case s.shapes # Array.head <#> _.shapeType of
+            Just (STStructure {members}) -> Array.head members <#> _.isRequired
+            _ -> Nothing
+
+      firstMemberReq `shouldContain` true
+
+    it "should read a list structure member" do
+      s <- r { "MyStructure": shape "structure" _
+                { required = Just []
+                , members = Just $ Object.fromHomogeneous
+                  { "Booleans": sname "MyBooleans"
+                  }
+                }
+             , "MyBooleans": shape "list" _ { member = jsname "boolean" }
+             } {}
+      s.shapes `shouldEqual`
+        [ shapeDef "MyStructure" $ STStructure
+          { members:
+            [ { name: "Booleans", isRequired: false, memberType: MTList (MTScalar SCBoolean) }
+            ]
+          }
+        ]
+
+    it "should read a map structure member" do
+      s <- r { "MyStructure": shape "structure" _
+                { required = Just []
+                , members = Just $ Object.fromHomogeneous
+                  { "Booleans": sname "MyBooleans"
+                  }
+                }
+             , "MyBooleans": shape "map" _ { value = jsname "boolean" }
+             } {}
+      s.shapes `shouldEqual`
+        [ shapeDef "MyStructure" $ STStructure
+          { members:
+            [ { name: "Booleans", isRequired: false, memberType: MTMap (MTScalar SCBoolean) }
+            ]
+          }
+        ]
+
+    it "should guard against invalid shape name"
+      let guardInvalidName name = do
+            e <- rErr' (_ { shapes = Object.fromFoldable
+                                     [ Tuple name (shape_ "structure")
+                                     ]
+                          })
+            e `shouldEqual` (REInvalidName name)
+      in traverse_ guardInvalidName
+         [ "_foo"
+         , "1foo"
+         , "foo!"
+         ]
+
+    pending "exclude recursive members"
+
+    it "should fail when referring to an unknown shape" do
+      err <- rErr { "MyStructure": shape "structure" _
+                       { members = Just $ Object.fromHomogeneous
+                                   { "A": sname "Foo"
+                                   }
+                       }
+                  } {}
+      err `shouldEqual` (REMissingShape "Foo")
+
+    -- Operations
 
     it "should read operations with input and output" do
       s <- r {} { "Op1": operation "Op1" _ { input = jsname "Op1Input"
@@ -150,9 +257,25 @@ serviceReaderSpec = do
         , operationDef "Op2" Nothing Nothing
         ]
 
+
+    it "should guard against invalid operation name"
+      let guardInvalidName name = do
+            e <- rErr' (_ { operations =
+                               Object.fromFoldable
+                               [ Tuple name (operation name identity)
+                               ]
+                          })
+            e `shouldEqual` (REInvalidName name)
+      in traverse_ guardInvalidName
+         [ "_foo"
+         , "1foo"
+         , "foo!"
+         ]
+
+
 r' :: forall m. MonadThrow Error m => (AService -> AService) -> m ServiceDef
 r' f = case readService meta (svc f) of
-  Left l -> throwError <<< error $ "unable to build service def"
+  Left l -> throwError <<< error $ "unable to build service def: " <> show l
   Right s -> pure s
 
 r
@@ -167,6 +290,24 @@ r shapes' operations' =
   r' _ { shapes = Object.fromHomogeneous shapes'
        , operations = Object.fromHomogeneous operations'
        }
+
+rErr' :: forall m. MonadThrow Error m => (AService -> AService) -> m ReadError
+rErr' f = case readService meta (svc f) of
+  Left l -> pure l
+  Right s -> throwError <<< error $ "expected read error"
+
+rErr
+  :: forall m r1 r2
+     . MonadThrow Error m
+     => Homogeneous r1 AWS.ServiceShape
+     => Homogeneous r2 AWS.ServiceOperation
+     => { |r1 }
+     -> { |r2 }
+     -> m ReadError
+rErr shapes' operations' =
+  rErr' _ { shapes = Object.fromHomogeneous shapes'
+          , operations = Object.fromHomogeneous operations'
+          }
 
 -- Creators
 
@@ -229,7 +370,6 @@ emptyMetadata = AWS.ServiceMetadata
   , timestampFormat: Nothing
   , checksumFormat: Nothing
   }
-
 
 emptyASvc :: AService
 emptyASvc =

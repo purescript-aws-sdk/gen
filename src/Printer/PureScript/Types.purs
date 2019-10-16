@@ -5,13 +5,11 @@ module Printer.PureScript.Types
 
 import Prelude
 
-import Data.Array (elem, null, partition)
-import Data.Array as Array
+import Data.Array (null, partition)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(..), joinWith, replace, replaceAll)
-import Printer.CycledInDeclaration (ServiceName(..), NewTypeName(..), AttributeName(..), notElem)
 import Printer.PureScript.Comment (comment)
-import Printer.Types (ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember)
+import Printer.Types (MemberType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember, scalarTypeToPSType)
 
 fileName :: ServiceDef -> String
 fileName { name } = name <> "Types"
@@ -58,16 +56,7 @@ instance encode{{name}} :: Encode {{name}} where encode = genericEncode options
 
 recordType :: ServiceDef -> ShapeDef -> String
 recordType svc shape = case shape.shapeType of
-    STList { member } -> recordArray member
-    STMap { value } -> recordMap value
-    STStructure { required, members } -> recordRecord svc shape required members
-    STScalar SCBoolean -> "Boolean"
-    STScalar SCString -> "String"
-    STScalar SCInt -> "Int"
-    STScalar SCNumber -> "Number"
-    STScalar SCTimestamp -> "Types.Timestamp"
-    STUnit -> "Unit"
-    STRef type' -> type'
+    STStructure { members } -> recordRecord svc shape members
 
 recordArray :: String -> String
 recordArray shape = "(Array {{type}})"
@@ -77,31 +66,43 @@ recordMap :: String -> String
 recordMap shape = "(StrMap.StrMap {{value}})"
     # replace (Pattern "{{value}}") (Replacement shape)
 
-recordRecord :: ServiceDef -> ShapeDef -> Array String -> Array StructureMember -> String
-recordRecord svc shape required members = if null members
+recordRecord :: ServiceDef -> ShapeDef -> Array StructureMember -> String
+recordRecord svc shape members = if null members
     then "Types.NoArguments"
     else "\n  { {{fields}}\n  }"
         # replace (Pattern "{{fields}}") (Replacement fields)
-            where fields = recordFields svc shape members required # joinWith "\n  , "
+            where fields = recordFields svc shape members # joinWith "\n  , "
 
-recordFields :: ServiceDef -> ShapeDef -> Array StructureMember -> Array String -> Array String
-recordFields svc shape members required = fields
+recordFields :: ServiceDef -> ShapeDef -> Array StructureMember -> Array String
+recordFields svc shape members = fields
     where field :: StructureMember -> String
-          field { name, shapeName } = "\"{{name}}\" :: {{required}} ({{type}})"
-              # replace (Pattern "{{name}}") (Replacement name)
-              # replace (Pattern "{{type}}") (Replacement shapeName)
-              # replace (Pattern "{{required}}") (Replacement $ if elem name required then "" else "Maybe")
-              # replace (Pattern "  ") (Replacement " ")
+          field sm = "\"{{name}}\" :: {{type}}"
+              # replace (Pattern "{{name}}") (Replacement sm.name)
+              # replace (Pattern "{{type}}") (Replacement $ structureMemberToPSType sm)
 
-          fields = filterKeysNotCycledInDeclaration svc shape members <#> field
+          fields = members <#> field
+
+structureMemberToPSType :: StructureMember -> String
+structureMemberToPSType { memberType, isRequired } =
+  isRequiredF $ memberF memberType
+  where
+    isRequiredF n =
+      if isRequired
+      then n
+      else "Maybe (" <> n <> ")"
+
+    memberF m = case m of
+      MTScalar sc -> scalarTypeToPSType sc
+      MTRef name -> name
+      MTList m' -> "Array (" <> memberF m' <> ")"
+      MTMap m' -> "StrMap.StrMap (" <> memberF m' <> ")"
 
 defaultConstructor :: ServiceDef -> ShapeDef -> String
 defaultConstructor svc shape = case shape.shapeType of
-    STStructure { required, members } -> defaultRecordConstructor svc shape members required
-    _ -> ""
+    STStructure { members } -> defaultRecordConstructor svc shape members
 
-defaultRecordConstructor :: ServiceDef -> ShapeDef -> Array StructureMember -> Array String -> String
-defaultRecordConstructor svc shape members required = if null members
+defaultRecordConstructor :: ServiceDef -> ShapeDef -> Array StructureMember -> String
+defaultRecordConstructor svc shape members = if null members
     then "" -- there's already a singleton constructor
     else """
 -- | Constructs {{name}} from required parameters
@@ -119,22 +120,15 @@ new{{name}}' {{arguments}} customize = ({{name}} <<< customize) { {{fieldAssignm
     # replaceAll (Pattern "{{fieldAssignments}}") (Replacement fieldAssignments)
         where newTypeSignature = (signatureTypes <> [shape.name]) # joinWith " -> "
               fieldsSignature = (signatureTypes <> [ "( { " <> fields <> " } -> {" <> fields <> " } )", shape.name]) # joinWith " -> "
-              fields = recordFields svc shape members required # joinWith " , "
+              fields = recordFields svc shape members # joinWith " , "
               arguments = (escapeArgument <<< _.name) <$> requiredFields # joinWith " "
               fieldAssignments = (requiredFieldAssignments <> optionalFieldAssignments) # joinWith ", "
               requiredFieldAssignments = (\f -> escapeFieldName f.name <> ": " <> escapeArgument f.name) <$> requiredFields
               optionalFieldAssignments = (\f -> escapeFieldName f.name <> ": Nothing") <$> optionalFields
-              filteredFields = filterKeysNotCycledInDeclaration svc shape members
-              signatureTypes = (_.shapeName) <$> requiredFields
+              filteredFields = members
+              signatureTypes = structureMemberToPSType <$> requiredFields
               requiredFields = splitFields.yes
               optionalFields = splitFields.no
-              splitFields = partition ((flip elem) required <<< _.name) filteredFields
+              splitFields = partition (_.isRequired) filteredFields
               escapeFieldName n = "\"" <> n <> "\""
               escapeArgument n = "_" <> n
-
-filterKeysNotCycledInDeclaration :: ServiceDef -> ShapeDef -> Array StructureMember -> Array StructureMember
-filterKeysNotCycledInDeclaration svc shape names = Array.filter notCycledInDeclaration names
-    where notCycledInDeclaration { shapeName } = notElem
-              (ServiceName svc.name)
-              (NewTypeName shape.name)
-              (AttributeName shapeName)
