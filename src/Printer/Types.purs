@@ -2,7 +2,9 @@ module Printer.Types
        ( ServiceDef
        , ShapeDef
        , ShapeType(..)
+       , MemberType(..)
        , ScalarType(..)
+       , scalarTypeToPSType
        , StructureMember
        , OperationDef
        , ReadError(..)
@@ -28,19 +30,24 @@ type ShapeDef =
   }
 
 data ShapeType =
-  STList { member :: String }
-  | STMap { value :: String }
-  | STStructure { required :: Array String
-                , members :: Array StructureMember
-                }
-  | STScalar ScalarType
-  | STRef String
-  | STUnit
+  STStructure { members :: Array StructureMember
+              }
 derive instance eqShapeType :: Eq ShapeType
 derive instance ordShapeType :: Ord ShapeType
 derive instance genShapeType :: Generic ShapeType _
 instance showShapeType :: Show ShapeType where
   show = genericShow
+
+data MemberType =
+  MTScalar ScalarType
+  | MTRef String
+  | MTList MemberType
+  | MTMap MemberType
+derive instance eqMemberType :: Eq MemberType
+derive instance ordMemberType :: Ord MemberType
+derive instance genMemberType :: Generic MemberType _
+instance showMemberType :: Show MemberType where
+  show x = genericShow x
 
 data ScalarType =
   SCString
@@ -54,9 +61,17 @@ derive instance genScalarType :: Generic ScalarType _
 instance showScalarType :: Show ScalarType where
   show = genericShow
 
+scalarTypeToPSType :: ScalarType -> String
+scalarTypeToPSType SCString = "String"
+scalarTypeToPSType SCInt = "Int"
+scalarTypeToPSType SCNumber = "Number"
+scalarTypeToPSType SCBoolean = "Boolean"
+scalarTypeToPSType SCTimestamp = "Types.Timestamp"
+
 type StructureMember =
   { name :: String
-  , shapeName :: String
+  , isRequired :: Boolean
+  , memberType :: MemberType
   }
 
 type OperationDef =
@@ -66,8 +81,11 @@ type OperationDef =
   , output :: Maybe String
   }
 
-data ReadError
+data ReadError =
+  REMissingShape String
+  | REInvalidName String
 
+derive instance eqReadError :: Eq ReadError
 derive instance genReadError :: Generic ReadError _
 instance showReadError :: Show ReadError where
   show = genericShow
