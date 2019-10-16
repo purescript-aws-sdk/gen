@@ -245,18 +245,26 @@ serviceReaderSpec = do
     -- Operations
 
     it "should read operations with input and output" do
-      s <- r {} { "Op1": operation "Op1" _ { input = jsname "Op1Input"
-                                           , output = jsname "Op1Output"
-                                           }
-                , "Op2": operation "Op2" _ { input = Nothing
-                                           , output = Nothing
-                                           }
-                }
+      s <- r { "Op1Input": shape_ "structure"
+             , "Op1Output": shape_ "structure"
+             }
+             { "Op1": operation "Op1" _ { input = jsname "Op1Input"
+                                        , output = jsname "Op1Output"
+                                        }
+             , "Op2": operation "Op2" _ { input = Nothing
+                                        , output = Nothing
+                                        }
+             }
       s.operations `shouldEqual`
         [ operationDef "Op1" (Just "Op1Input") (Just "Op1Output")
         , operationDef "Op2" Nothing Nothing
         ]
 
+    it "should use key as operation name" do
+      s <- r {}
+             { "Op1": operation "OpA" identity
+             }
+      (s.operations # Array.head <#> _.methodName) `shouldContain` "Op1"
 
     it "should guard against invalid operation name"
       let guardInvalidName name = do
@@ -272,6 +280,20 @@ serviceReaderSpec = do
          , "foo!"
          ]
 
+    it "should guard against operation names with missing input shape" do
+      e <- rErr {} { "Op1": operation "Op1" _ { input = jsname "Op1Input"
+                                              }
+                   }
+      e `shouldEqual` (REInvalidOperationType "Op1Input")
+
+
+    it "should guard against operation names with non structure input/output" do
+      e <- rErr { "Op1Input": shape_ "integer"
+                }
+                { "Op1": operation "Op1" _ { input = jsname "Op1Input"
+                                           }
+                }
+      e `shouldEqual` (REInvalidOperationType "Op1Input")
 
 r' :: forall m. MonadThrow Error m => (AService -> AService) -> m ServiceDef
 r' f = case readService meta (svc f) of
