@@ -8,26 +8,28 @@ import AWS as AWS
 import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
 import Data.Either (Either, fromRight)
-import Data.Foldable (elem)
+import Data.Foldable (elem, for_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
 import Data.String.Regex (Regex, regex)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (noFlags)
 import Data.Traversable (traverse)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), uncurry)
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafePartial)
-import Printer.Types (MemberType(..), ReadError(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember)
+import Printer.Types (MemberType(..), ReadError(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember, OperationDef)
 
 readService :: AWS.MetadataElement -> AWS.Service -> Either ReadError ServiceDef
 readService (AWS.MetadataElement meta) (AWS.Service svc) = do
   shapes <- collectShapes svc.shapes
+  let shapeNames = _.name <$> shapes
+  operations <- collectOperations shapeNames svc.operations
   pure { name: meta.name
        , documentation: svc.documentation
        , shapes
-       , operations: Array.sortWith _.methodName $ Object.toArrayWithKey toOperation svc.operations
+       , operations
        }
   where
     toOperation methodName (AWS.ServiceOperation so) =
@@ -54,6 +56,27 @@ collectShapes ashapes = do
       guardName name
       stMembers <- traverse (\(Tuple mName (AWS.ServiceShapeName { shape })) -> getStructureMember mName shape (elem mName required) ashapes) members
       pure $ { name, documentation, shapeType: STStructure { members: stMembers } }
+
+collectOperations :: Array String -> Object AWS.ServiceOperation -> Either ReadError (Array OperationDef)
+collectOperations shapeNames aops =
+  traverse (uncurry createServiceDef) aops'
+
+  where
+    aops' = Object.toAscUnfoldable aops
+
+    guardKnownShape n =
+      if Array.elem n shapeNames
+      then pure unit
+      else throwError (REInvalidOperationType n)
+
+    createServiceDef methodName (AWS.ServiceOperation so) = do
+      guardName methodName
+      let input = so.input <#> unServiceShapeName
+      let output = so.output <#> unServiceShapeName
+      for_ input guardKnownShape
+      for_ output guardKnownShape
+      pure { methodName, input, output, documentation: so.documentation }
+
 
 guardName :: String -> Either ReadError Unit
 guardName s =

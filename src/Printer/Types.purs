@@ -84,6 +84,7 @@ type OperationDef =
 data ReadError =
   REMissingShape String
   | REInvalidName String
+  | REInvalidOperationType String
 
 derive instance eqReadError :: Eq ReadError
 derive instance genReadError :: Generic ReadError _
