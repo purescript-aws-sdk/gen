@@ -17,7 +17,7 @@ import Foreign.Object (Object)
 import Foreign.Object as Object
 import Printer.ServiceReader (readService)
 import Printer.Types (MemberType(..), OperationDef, ReadError(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..))
-import Test.Spec (Spec, describe, it, pending)
+import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldContain, shouldEqual)
 import Type.Row.Homogeneous (class Homogeneous)
 
@@ -230,8 +230,6 @@ serviceReaderSpec = do
          , "1foo"
          , "foo!"
          ]
-
-    pending "exclude recursive members"
 
     it "should fail when referring to an unknown shape" do
       err <- rErr { "MyStructure": shape "structure" _
