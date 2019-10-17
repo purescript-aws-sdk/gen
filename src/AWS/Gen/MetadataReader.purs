@@ -44,13 +44,6 @@ readService (AWS.MetadataElement meta) (AWS.Service svc) = do
        , shapes
        , operations
        }
-  where
-    toOperation methodName (AWS.ServiceOperation so) =
-      { methodName
-      , documentation: so.documentation
-      , input: so.input <#> unServiceShapeName
-      , output: so.output <#> unServiceShapeName
-      }
 
 collectShapes :: Object AWS.ServiceShape -> Either ReadError (Array ShapeDef)
 collectShapes ashapes = do
