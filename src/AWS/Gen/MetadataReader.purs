@@ -35,12 +35,12 @@ instance showReadError :: Show ReadError where
   show = genericShow
 
 readService :: AWS.MetadataElement -> AWS.Service -> Either ReadError ServiceDef
-readService (AWS.MetadataElement meta) (AWS.Service svc) = do
-  shapes <- collectShapes svc.shapes
+readService ameta asvc = do
+  shapes <- collectShapes asvc.shapes
   let shapeNames = _.name <$> shapes
-  operations <- collectOperations shapeNames svc.operations
-  pure { name: meta.name
-       , documentation: svc.documentation
+  operations <- collectOperations shapeNames asvc.operations
+  pure { name: ameta.name
+       , documentation: asvc.documentation
        , shapes
        , operations
        }
@@ -51,7 +51,7 @@ collectShapes ashapes = do
 
   where
     structures = Array.catMaybes $ ashapes # Object.toArrayWithKey \name -> case _ of
-      AWS.ServiceShape { "type": "structure", documentation, members, required } ->
+      { "type": "structure", documentation, members, required } ->
         let members' = members <#> Object.toAscUnfoldable # fromMaybe []
             required' = fromMaybe [] required
         in Just { name, documentation, members: members', required: required' }
@@ -60,7 +60,7 @@ collectShapes ashapes = do
 
     createShapeDef { name, documentation, members, required } = do
       guardName name
-      stMembers <- traverse (\(Tuple mName (AWS.ServiceShapeName { shape })) -> getStructureMember mName shape (elem mName required) ashapes) members
+      stMembers <- traverse (\(Tuple mName { shape }) -> getStructureMember mName shape (elem mName required) ashapes) members
       pure $ { name, documentation, shapeType: STStructure { members: stMembers } }
 
 collectOperations :: Array String -> Object AWS.ServiceOperation -> Either ReadError (Array OperationDef)
@@ -75,13 +75,13 @@ collectOperations shapeNames aops =
       then pure unit
       else throwError (REInvalidOperationType n)
 
-    createServiceDef methodName (AWS.ServiceOperation so) = do
+    createServiceDef methodName aop = do
       guardName methodName
-      let input = so.input <#> unServiceShapeName
-      let output = so.output <#> unServiceShapeName
+      let input = aop.input <#> _.shape
+      let output = aop.output <#> _.shape
       for_ input guardKnownShape
       for_ output guardKnownShape
-      pure { methodName, input, output, documentation: so.documentation }
+      pure { methodName, input, output, documentation: aop.documentation }
 
 
 guardName :: String -> Either ReadError Unit
@@ -103,10 +103,10 @@ followRef shapeName ashapes =
     Just sc ->
       pure $ MTScalar sc
     Nothing ->
-      case Object.lookup shapeName ashapes <#> unServiceShape of
-        Just { "type": "list", member: Just (AWS.ServiceShapeName { shape: elShapeName }) } ->
+      case Object.lookup shapeName ashapes of
+        Just { "type": "list", member: Just { shape: elShapeName } } ->
           MTList <$> followRef elShapeName ashapes
-        Just { "type": "map", value: Just (AWS.ServiceShapeName { shape: elShapeName }) } ->
+        Just { "type": "map", value: Just { shape: elShapeName } } ->
           MTMap <$> followRef elShapeName ashapes
         Just { "type": "structure" } ->
           pure $ MTRef shapeName
@@ -114,9 +114,6 @@ followRef shapeName ashapes =
           followRef shapeName' ashapes
         Nothing ->
           throwError $ REMissingShape shapeName
-
-  where
-    unServiceShape (AWS.ServiceShape s) = s
 
 safeShapeName :: String -> String
 safeShapeName type' = (String.take 1 type' # String.toUpper) <> (String.drop 1 type')
@@ -131,6 +128,3 @@ nameToScalarType "double"    = Just SCNumber
 nameToScalarType "string"    = Just SCString
 nameToScalarType "timestamp" = Just SCTimestamp
 nameToScalarType _           = Nothing
-
-unServiceShapeName :: AWS.ServiceShapeName -> String
-unServiceShapeName (AWS.ServiceShapeName { shape }) = shape

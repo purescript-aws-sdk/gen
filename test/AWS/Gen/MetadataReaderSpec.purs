@@ -15,61 +15,10 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect.Aff (throwError)
 import Effect.Exception (Error, error)
-import Foreign.Object (Object)
 import Foreign.Object as Object
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldContain, shouldEqual)
 import Type.Row.Homogeneous (class Homogeneous)
-
-type AService =
-  { shapes :: Object AWS.ServiceShape
-  , operations :: Object AWS.ServiceOperation
-  , metadata :: AWS.ServiceMetadata
-  , documentation :: Maybe String
-  , version :: Maybe String
-  }
-
-type AServiceShape =
-  { type :: String
-  , members ::  Maybe (Object AWS.ServiceShapeName)
-  , documentation :: Maybe String
-  , required :: Maybe (Array String)
-  , member :: Maybe AWS.ServiceShapeName
-  , exception :: Maybe Boolean
-  , max :: Maybe Number
-  , min :: Maybe Number
-  , enum :: Maybe (Array String)
-  , error :: Maybe AWS.ServiceError
-  , pattern :: Maybe String
-  , payload :: Maybe String
-  , value :: Maybe AWS.ServiceShapeName
-  , key :: Maybe AWS.ServiceShapeName
-  , wrapper :: Maybe Boolean
-  , sensitive :: Maybe Boolean
-  , fault :: Maybe Boolean
-  , flattened :: Maybe Boolean
-  , box :: Maybe Boolean
-  , deprecated :: Maybe Boolean
-  , streaming :: Maybe Boolean
-  , locationName :: Maybe String
-  , xmlOrder :: Maybe (Array String)
-  , xmlNamespace :: Maybe AWS.ServiceXmlNamespace
-  , timestampFormat :: Maybe String
-  }
-
-type AOperation =
-  { name :: String
-  , http :: AWS.ServiceHttp
-  , input :: Maybe AWS.ServiceShapeName
-  , documentation :: Maybe String
-  , errors :: Maybe (Array AWS.ServiceShapeName)
-  , output :: Maybe AWS.ServiceShapeName
-  , idempotent :: Maybe Boolean
-  , documentationUrl :: Maybe String
-  , deprecated :: Maybe Boolean
-  , authtype :: Maybe String
-  , alias :: Maybe String
-  }
 
 metadataReaderSpec :: Spec Unit
 metadataReaderSpec = do
@@ -293,7 +242,7 @@ metadataReaderSpec = do
                 }
       e `shouldEqual` (REInvalidOperationType "Op1Input")
 
-r' :: forall m. MonadThrow Error m => (AService -> AService) -> m ServiceDef
+r' :: forall m. MonadThrow Error m => (AWS.Service -> AWS.Service) -> m ServiceDef
 r' f = case readService meta (svc f) of
   Left l -> throwError <<< error $ "unable to build service def: " <> show l
   Right s -> pure s
@@ -311,7 +260,7 @@ r shapes' operations' =
        , operations = Object.fromHomogeneous operations'
        }
 
-rErr' :: forall m. MonadThrow Error m => (AService -> AService) -> m ReadError
+rErr' :: forall m. MonadThrow Error m => (AWS.Service -> AWS.Service) -> m ReadError
 rErr' f = case readService meta (svc f) of
   Left l -> pure l
   Right s -> throwError <<< error $ "expected read error"
@@ -333,27 +282,27 @@ rErr shapes' operations' =
 
 meta :: AWS.MetadataElement
 meta =
-  AWS.MetadataElement { name: "Foo"
-                      , prefix: Nothing
-                      }
+  { name: "Foo"
+  , prefix: Nothing
+  }
 
-svc :: (AService -> AService) -> AWS.Service
-svc f = AWS.Service $ f emptyASvc
+svc :: (AWS.Service -> AWS.Service) -> AWS.Service
+svc f = f emptyASvc
 
-shape :: String -> (AServiceShape -> AServiceShape) -> AWS.ServiceShape
-shape typ f = AWS.ServiceShape $ f $ emptyAShape typ
+shape :: String -> (AWS.ServiceShape -> AWS.ServiceShape) -> AWS.ServiceShape
+shape typ f = f $ emptyAShape typ
 
 shape_ :: String -> AWS.ServiceShape
 shape_ typ = shape typ identity
 
 sname :: String -> AWS.ServiceShapeName
-sname shape' = AWS.ServiceShapeName { shape: shape' }
+sname shape' = { shape: shape' }
 
 jsname :: String -> Maybe AWS.ServiceShapeName
 jsname = Just <<< sname
 
-operation :: String -> (AOperation -> AOperation) -> AWS.ServiceOperation
-operation name f = AWS.ServiceOperation $ f $ emptyAOperation name
+operation :: String -> (AWS.ServiceOperation -> AWS.ServiceOperation) -> AWS.ServiceOperation
+operation name f = f $ emptyAOperation name
 
 shapeDef :: String -> ShapeType -> ShapeDef
 shapeDef name shapeType =
@@ -373,7 +322,7 @@ operationDef methodName input output =
 -- Empty
 
 emptyMetadata :: AWS.ServiceMetadata
-emptyMetadata = AWS.ServiceMetadata
+emptyMetadata =
   { signatureVersion: ""
   , serviceFullName: ""
   , protocol: ""
@@ -391,7 +340,7 @@ emptyMetadata = AWS.ServiceMetadata
   , checksumFormat: Nothing
   }
 
-emptyASvc :: AService
+emptyASvc :: AWS.Service
 emptyASvc =
   { shapes: Object.empty
   , operations: Object.empty
@@ -400,7 +349,7 @@ emptyASvc =
   , version: Nothing
   }
 
-emptyAShape :: String -> AServiceShape
+emptyAShape :: String -> AWS.ServiceShape
 emptyAShape type' =
   { "type": type'
   , members: Nothing
@@ -429,10 +378,10 @@ emptyAShape type' =
   , timestampFormat: Nothing
   }
 
-emptyAOperation :: String -> AOperation
+emptyAOperation :: String -> AWS.ServiceOperation
 emptyAOperation name =
   { name
-  , http: AWS.ServiceHttp { method: "", requestUri: "" }
+  , http: { method: "", requestUri: "" }
   , input: Nothing
   , documentation: Nothing
   , errors: Nothing

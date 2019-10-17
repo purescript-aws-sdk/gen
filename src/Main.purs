@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import AWS.Gen.Metadata (Metadata(Metadata), MetadataElement(..), metadataFileRegex)
+import AWS.Gen.Metadata (MetadataElement, metadataFileRegex)
 import AWS.Gen.MetadataReader (readService)
 import AWS.Gen.Model (ServiceDef)
 import AWS.Gen.Printer.PureScript (filePath, project)
@@ -62,8 +62,7 @@ runProject apiFileNames clientsProject metadataElement = do
   createClientProject clientsPath serviceDef
   createClientFiles clientsPath serviceDef
   where
-    name = case metadataElement of
-      (MetadataElement { name: name' }) -> name'
+    name = metadataElement.name
 
     mkApiFileNameRegex = case metadataFileRegex metadataElement of
       Right r -> pure r
@@ -86,7 +85,7 @@ runProject apiFileNames clientsProject metadataElement = do
 main :: Effect Unit
 main = launchAff_ do
   apiMetadataFileContent <- readTextFile UTF8 apisMetadataFilePath
-  Metadata metadata <- decodeJSON apiMetadataFileContent # liftExcept # liftEffect
+  metadata <- decodeJSON apiMetadataFileContent # liftExcept # liftEffect
   let metadataElements = values metadata
   apiFileNames <- readdir apisPath
 
