@@ -1,4 +1,4 @@
-module Printer.CycledInDeclaration where
+module AWS.Gen.Printer.CycledInDeclaration where
 
 import Prelude (class Eq, not, (==))
 import Data.Array as Array

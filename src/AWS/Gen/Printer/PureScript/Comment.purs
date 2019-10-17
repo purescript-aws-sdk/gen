@@ -1,4 +1,4 @@
-module Printer.PureScript.Comment where
+module AWS.Gen.Printer.PureScript.Comment where
 
 import Prelude
 import Data.String (Pattern(Pattern), Replacement(Replacement), replaceAll)

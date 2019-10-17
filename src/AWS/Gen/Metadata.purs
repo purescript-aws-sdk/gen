@@ -1,4 +1,4 @@
-module AWS where
+module AWS.Gen.Metadata where
 
 import Prelude
 import Data.Either (Either)

@@ -2,7 +2,13 @@ module Main where
 
 import Prelude
 
-import AWS (Metadata(Metadata), MetadataElement(..), metadataFileRegex)
+import AWS.Gen.Metadata (Metadata(Metadata), MetadataElement(..), metadataFileRegex)
+import AWS.Gen.MetadataReader (readService)
+import AWS.Gen.Model (ServiceDef)
+import AWS.Gen.Printer.PureScript (filePath, project)
+import AWS.Gen.Printer.PureScript.Module as ModulePrinter
+import AWS.Gen.Printer.PureScript.Requests as RequestsPrinter
+import AWS.Gen.Printer.PureScript.Types as TypesPrinter
 import Control.Monad.Error.Class (throwError)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -20,12 +26,6 @@ import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile, readdir, writeTextFile)
 import Node.Path (FilePath, dirname)
 import Node.Path as Path
-import Printer.PureScript (filePath, project)
-import Printer.PureScript.Module as ModulePrinter
-import Printer.PureScript.Requests as RequestsPrinter
-import Printer.PureScript.Types as TypesPrinter
-import Printer.ServiceReader (readService)
-import Printer.Types (ServiceDef)
 
 apisMetadataFilePath = "./aws-sdk-js/apis/metadata.json" :: FilePath
 apisPath = "./aws-sdk-js/apis/" :: FilePath

@@ -1,15 +1,15 @@
-module Printer.PureScript.Types
+module AWS.Gen.Printer.PureScript.Types
        ( fileName
        , output
        ) where
 
 import Prelude
 
+import AWS.Gen.Model (MemberType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember, scalarTypeToPSType)
+import AWS.Gen.Printer.PureScript.Comment (comment)
 import Data.Array (null, partition)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(..), joinWith, replace, replaceAll)
-import Printer.PureScript.Comment (comment)
-import Printer.Types (MemberType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember, scalarTypeToPSType)
 
 fileName :: ServiceDef -> String
 fileName { name } = name <> "Types"

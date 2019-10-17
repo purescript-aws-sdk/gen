@@ -1,14 +1,18 @@
-module Printer.ServiceReader
-       ( readService
+module AWS.Gen.MetadataReader
+       ( ReadError(..)
+       , readService
        ) where
 
 import Prelude
 
-import AWS as AWS
+import AWS.Gen.Metadata as AWS
+import AWS.Gen.Model (MemberType(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember, OperationDef)
 import Control.Monad.Error.Class (throwError)
 import Data.Array as Array
 import Data.Either (Either, fromRight)
 import Data.Foldable (elem, for_)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
 import Data.String.Regex (Regex, regex)
@@ -19,7 +23,16 @@ import Data.Tuple (Tuple(..), uncurry)
 import Foreign.Object (Object)
 import Foreign.Object as Object
 import Partial.Unsafe (unsafePartial)
-import Printer.Types (MemberType(..), ReadError(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..), StructureMember, OperationDef)
+
+data ReadError =
+  REMissingShape String
+  | REInvalidName String
+  | REInvalidOperationType String
+
+derive instance eqReadError :: Eq ReadError
+derive instance genReadError :: Generic ReadError _
+instance showReadError :: Show ReadError where
+  show = genericShow
 
 readService :: AWS.MetadataElement -> AWS.Service -> Either ReadError ServiceDef
 readService (AWS.MetadataElement meta) (AWS.Service svc) = do
