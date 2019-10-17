@@ -1,11 +1,11 @@
-module Printer.PureScript.Module where
+module AWS.Gen.Printer.PureScript.Module where
 
 import Prelude
 
+import AWS.Gen.Model (ServiceDef)
+import AWS.Gen.Printer.PureScript.Comment (comment)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), replace, replaceAll)
-import Printer.PureScript.Comment (comment)
-import Printer.Types (ServiceDef)
 
 fileName :: ServiceDef -> String
 fileName svc = svc.name

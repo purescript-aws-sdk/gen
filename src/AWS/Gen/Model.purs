@@ -1,4 +1,4 @@
-module Printer.Types
+module AWS.Gen.Model
        ( ServiceDef
        , ShapeDef
        , ShapeType(..)
@@ -7,7 +7,6 @@ module Printer.Types
        , scalarTypeToPSType
        , StructureMember
        , OperationDef
-       , ReadError(..)
        ) where
 
 import Prelude
@@ -80,13 +79,3 @@ type OperationDef =
   , input :: Maybe String
   , output :: Maybe String
   }
-
-data ReadError =
-  REMissingShape String
-  | REInvalidName String
-  | REInvalidOperationType String
-
-derive instance eqReadError :: Eq ReadError
-derive instance genReadError :: Generic ReadError _
-instance showReadError :: Show ReadError where
-  show = genericShow

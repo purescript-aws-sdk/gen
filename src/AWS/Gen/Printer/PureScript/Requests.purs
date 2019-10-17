@@ -1,11 +1,11 @@
-module Printer.PureScript.Requests where
+module AWS.Gen.Printer.PureScript.Requests where
 
 import Prelude
 
+import AWS.Gen.Printer.PureScript.Comment (comment)
+import AWS.Gen.Model (ServiceDef, OperationDef)
 import Data.Maybe (maybe)
 import Data.String (Pattern(Pattern), Replacement(Replacement), drop, joinWith, replace, replaceAll, take, toLower)
-import Printer.PureScript.Comment (comment)
-import Printer.Types (ServiceDef, OperationDef)
 
 fileName :: ServiceDef -> String
 fileName { name } = name <> "Requests"

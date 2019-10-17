@@ -1,10 +1,12 @@
-module Printer.ServiceReaderSpec
-       ( serviceReaderSpec
+module AWS.Gen.MetadataReaderSpec
+       ( metadataReaderSpec
        ) where
 
 import Prelude
 
-import AWS as AWS
+import AWS.Gen.Metadata as AWS
+import AWS.Gen.MetadataReader (ReadError(..), readService)
+import AWS.Gen.Model (MemberType(..), OperationDef, ScalarType(..), ServiceDef, ShapeDef, ShapeType(..))
 import Control.Monad.Error.Class (class MonadThrow)
 import Data.Array as Array
 import Data.Either (Either(..))
@@ -15,8 +17,6 @@ import Effect.Aff (throwError)
 import Effect.Exception (Error, error)
 import Foreign.Object (Object)
 import Foreign.Object as Object
-import Printer.ServiceReader (readService)
-import Printer.Types (MemberType(..), OperationDef, ReadError(..), ScalarType(..), ServiceDef, ShapeDef, ShapeType(..))
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldContain, shouldEqual)
 import Type.Row.Homogeneous (class Homogeneous)
@@ -71,8 +71,8 @@ type AOperation =
   , alias :: Maybe String
   }
 
-serviceReaderSpec :: Spec Unit
-serviceReaderSpec = do
+metadataReaderSpec :: Spec Unit
+metadataReaderSpec = do
   describe "Service Reader" do
     it "should copy the service's name" do
       s <- r' identity

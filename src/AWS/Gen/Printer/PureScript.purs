@@ -1,7 +1,8 @@
-module Printer.PureScript where
+module AWS.Gen.Printer.PureScript where
 
 import Prelude
 
+import AWS.Gen.Model (ServiceDef)
 import Data.String (Pattern(Pattern), Replacement(Replacement), replace, replaceAll, toLower)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
@@ -10,7 +11,6 @@ import FS (PartitionPaths(..), mkdirRecursive, partitionPaths, readdirRecursive)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile, writeTextFile)
 import Node.Path (FilePath, concat)
-import Printer.Types (ServiceDef)
 
 projectTemplatePath = "resources/templates/purescript/project" :: FilePath
 
