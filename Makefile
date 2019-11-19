@@ -15,17 +15,17 @@ DIR_PS_PROJECT_OUTPUT_NAME := AWS.ACM
 DIR_TMP := /tmp/aws-sdk-purs
 
 clean:
-	rm -fr aws-sdk-purs bower_components output
+	rm -fr aws-sdk-purs output
 
 init:
 	git submodule update --init --recursive
-	bower update
+	spago install
 
 build:
-	pulp build
+	spago build
 
 run:
-	pulp run
+	spago run
 
 init-all:
 	cd ${DIR_PS_PROJECT} && bower update && pulp build
